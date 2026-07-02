@@ -23,6 +23,12 @@ export interface Frame {
     stage: Stage;
 }
 
+export interface FrameJobData {
+    cycle: number;
+    frameId: string;
+    priority: boolean;
+}
+
 export interface LogEvent {
     id: number;
     level: EventLevel;

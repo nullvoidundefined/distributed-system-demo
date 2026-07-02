@@ -2,12 +2,18 @@
 
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { QUEUE_NAME, TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
+import { QUEUE_NAME, TELEMETRY_CHANNEL, type FrameJobData, type TelemetryMsg } from '@demo/shared';
+import {
+    DEFAULT_LOCK_DURATION_MS,
+    DEFAULT_MAX_STALLED_COUNT,
+    DEFAULT_STAGE_MS,
+    DEFAULT_STALLED_INTERVAL_MS,
+} from './constants.js';
 import { processFrame } from './stages/processFrame.js';
 
 const nodeId = process.env.NODE_ID ?? `node-${process.pid}`;
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
-const stageMs = Number(process.env.STAGE_MS ?? 2500);
+const stageMs = Number(process.env.STAGE_MS ?? DEFAULT_STAGE_MS);
 const crashProbability = Number(process.env.CRASH_PROB ?? 0);
 
 const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
@@ -29,24 +35,24 @@ function publishIdle(): void {
     void publisher.publish(TELEMETRY_CHANNEL, JSON.stringify(msg));
 }
 
-const worker = new Worker(
+const worker = new Worker<FrameJobData>(
     QUEUE_NAME,
     async (job) => {
         await processFrame(job, {
+            crashRoll: () => Math.random() < crashProbability,
+            getCompleted: () => completed,
             nodeId,
             pid: process.pid,
             publisher,
             stageMs,
-            getCompleted: () => completed,
-            crashRoll: () => Math.random() < crashProbability,
         });
     },
     {
         connection,
         concurrency: 1,
-        lockDuration: Number(process.env.LOCK_DURATION_MS ?? 5000),
-        stalledInterval: Number(process.env.STALLED_INTERVAL_MS ?? 3000),
-        maxStalledCount: Number(process.env.MAX_STALLED_COUNT ?? 10),
+        lockDuration: Number(process.env.LOCK_DURATION_MS ?? DEFAULT_LOCK_DURATION_MS),
+        stalledInterval: Number(process.env.STALLED_INTERVAL_MS ?? DEFAULT_STALLED_INTERVAL_MS),
+        maxStalledCount: Number(process.env.MAX_STALLED_COUNT ?? DEFAULT_MAX_STALLED_COUNT),
     },
 );
 
@@ -58,5 +64,8 @@ worker.on('completed', () => {
 worker.on('ready', publishIdle);
 
 process.on('SIGTERM', () => {
-    void worker.close().then(() => process.exit(0));
+    worker
+        .close()
+        .then(() => process.exit(0))
+        .catch(() => process.exit(1));
 });
