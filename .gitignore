@@ -2,3 +2,7 @@ node_modules/
 dist/
 .env
 .env.*
+
+# Compiled JS emitted next to TS sources (belt-and-suspenders; build uses tsc --noEmit)
+web/src/**/*.js
+web/vite.config.js
