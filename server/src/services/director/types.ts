@@ -1,0 +1,30 @@
+/** Types for the Director: the pure cycle-engine state machine and its effects. */
+
+export type DirectorPhase = 'seeding' | 'running' | 'complete' | 'paused';
+
+export interface DirectorState {
+    phase: DirectorPhase;
+    cycle: number;
+    nodeCount: number;
+}
+
+export interface DirectorCtx {
+    queueDepth: number;
+    activeCount: number;
+    remaining: number;
+    minNodes: number;
+    maxNodes: number;
+    scaleUpDepth: number;
+    scaleDownDepth: number;
+    batchSize: number;
+}
+
+export type DirectorAction =
+    { type: 'tick' } | { type: 'pause' } | { type: 'resume' } | { type: 'reset' };
+
+export type DirectorEffect =
+    | { type: 'seed'; count: number }
+    | { type: 'spawn' }
+    | { type: 'kill'; strategy: 'random' | 'idle' }
+    | { type: 'crash' }
+    | { type: 'resetQueue' };
