@@ -10,13 +10,18 @@ export interface NodePoolDeps {
     onExit: (nodeId: string, crashed: boolean) => void;
 }
 
+export interface SpawnedNode {
+    id: string;
+    pid: number;
+}
+
 export interface NodePool {
     crashRandom: (busyIds: string[]) => string | null;
     ids: () => string[];
     killIdle: (idleIds: string[]) => string | null;
     shutdown: () => void;
     size: () => number;
-    spawn: () => string;
+    spawn: () => SpawnedNode;
 }
 
 function wasCrash(code: number | null, signal: NodeJS.Signals | null): boolean {
@@ -33,7 +38,7 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
     const children = new Map<string, ChildProcess>();
     let counter = 0;
 
-    function spawn(): string {
+    function spawn(): SpawnedNode {
         counter += 1;
         const nodeId = `node-${counter}`;
         const child = fork(WORKER_ENTRY, [], {
@@ -53,7 +58,7 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
             children.delete(nodeId);
             deps.onExit(nodeId, wasCrash(code, signal));
         });
-        return nodeId;
+        return { id: nodeId, pid: child.pid ?? 0 };
     }
 
     function killIdle(idleIds: string[]): string | null {

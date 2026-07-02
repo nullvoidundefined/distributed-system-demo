@@ -41,7 +41,7 @@ describe('reduceDirector', () => {
         const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
         const ctx = { ...baseCtx, queueDepth: 1, remaining: 2, activeCount: 1, nodeCount: 4 };
         const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
-        expect(effects).toContainEqual({ type: 'kill', strategy: 'idle' });
+        expect(effects).toContainEqual({ type: 'kill' });
     });
 
     it('completes the cycle when nothing remains', () => {

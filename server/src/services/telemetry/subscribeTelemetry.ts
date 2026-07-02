@@ -3,7 +3,7 @@
 import type { Redis } from 'ioredis';
 import { TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
 import type { WorldStore } from '../worldState/createWorldStore.js';
-import { applyTelemetry } from '../worldState/reduceWorldState.js';
+import { applyTelemetry } from '../worldState/applyTelemetry.js';
 
 export function subscribeTelemetry(subscriber: Redis, store: WorldStore): void {
     void subscriber.subscribe(TELEMETRY_CHANNEL);

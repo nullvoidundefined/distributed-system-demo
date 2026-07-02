@@ -29,7 +29,7 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
     if (ctx.queueDepth >= ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
         effects.push({ type: 'spawn' });
     } else if (ctx.queueDepth <= ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
-        effects.push({ type: 'kill', strategy: 'idle' });
+        effects.push({ type: 'kill' });
     }
     return { effects, state };
 }

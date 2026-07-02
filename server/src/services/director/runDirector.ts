@@ -5,7 +5,8 @@ import type { WorldState } from '@demo/shared';
 import { TUNABLES } from '../../config/tunables.js';
 import type { NodePool } from '../nodePool/createNodePool.js';
 import type { WorldStore } from '../worldState/createWorldStore.js';
-import { appendEvent } from '../worldState/reduceWorldState.js';
+import { appendEvent } from '../worldState/appendEvent.js';
+import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
 import { reduceDirector } from './reduceDirector.js';
 import type { DirectorAction, DirectorEffect, DirectorState } from './types.js';
 
@@ -65,8 +66,10 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
     }
 
     function spawnNode(): void {
-        const id = pool.spawn();
-        store.update((s) => appendEvent(s, 'success', `autoscaling up: ${id} spawned`));
+        const { id, pid } = pool.spawn();
+        store.update((s) =>
+            appendEvent(applyNodeSpawning(s, id, pid), 'success', `autoscaling up: ${id} spawned`),
+        );
     }
 
     function retireIdleNode(): void {

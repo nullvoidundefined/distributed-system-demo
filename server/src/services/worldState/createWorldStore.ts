@@ -1,12 +1,11 @@
 /** In-memory holder for the current WorldState with an update helper. */
 
 import type { WorldState } from '@demo/shared';
-import { emptyWorld } from './reduceWorldState.js';
+import { emptyWorld } from './emptyWorld.js';
 
 export interface WorldStore {
     get: () => WorldState;
     update: (fn: (state: WorldState) => WorldState) => void;
-    reset: (cycle: number) => void;
 }
 
 export function createWorldStore(): WorldStore {
@@ -15,9 +14,6 @@ export function createWorldStore(): WorldStore {
         get: () => state,
         update: (fn) => {
             state = fn(state);
-        },
-        reset: (cycle) => {
-            state = emptyWorld(cycle);
         },
     };
 }

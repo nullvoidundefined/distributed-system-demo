@@ -11,23 +11,41 @@ import { createRenderQueue } from './queue/createRenderQueue.js';
 import { runDirector } from './services/director/runDirector.js';
 import { createNodePool } from './services/nodePool/createNodePool.js';
 import { subscribeTelemetry } from './services/telemetry/subscribeTelemetry.js';
+import { appendEvent } from './services/worldState/appendEvent.js';
+import { applyNodeCrashed } from './services/worldState/applyNodeCrashed.js';
+import { applyNodeSpawning } from './services/worldState/applyNodeSpawning.js';
+import { applyQueueEvent } from './services/worldState/applyQueueEvent.js';
 import { createWorldStore } from './services/worldState/createWorldStore.js';
-import { appendEvent, applyQueueEvent } from './services/worldState/reduceWorldState.js';
+import { removeNode } from './services/worldState/removeNode.js';
 import { createBroadcaster } from './websocket/createBroadcaster.js';
 import { handleCommand } from './websocket/handleCommand.js';
 
+const CRASHED_NODE_LINGER_MS = 1500;
+
 const store = createWorldStore();
-const queue = createRenderQueue(createRedisConnection());
-const queueEvents = createQueueEvents(createRedisConnection());
-subscribeTelemetry(createRedisConnection(), store);
+const redisForQueue = createRedisConnection();
+const redisForEvents = createRedisConnection();
+const redisForTelemetry = createRedisConnection();
+const queue = createRenderQueue(redisForQueue);
+const queueEvents = createQueueEvents(redisForEvents);
+subscribeTelemetry(redisForTelemetry, store);
 
 const pool = createNodePool({
     onExit: (nodeId, crashed) => {
-        store.update((s) => ({ ...s, nodes: s.nodes.filter((node) => node.id !== nodeId) }));
-        if (crashed) store.update((s) => appendEvent(s, 'warn', `${nodeId} process exited`));
+        if (!crashed) {
+            store.update((s) => removeNode(s, nodeId));
+            return;
+        }
+        store.update((s) =>
+            appendEvent(applyNodeCrashed(s, nodeId), 'warn', `${nodeId} process exited`),
+        );
+        setTimeout(() => store.update((s) => removeNode(s, nodeId)), CRASHED_NODE_LINGER_MS);
     },
 });
-for (let i = 0; i < TUNABLES.minNodes; i += 1) pool.spawn();
+for (let i = 0; i < TUNABLES.minNodes; i += 1) {
+    const { id, pid } = pool.spawn();
+    store.update((s) => applyNodeSpawning(s, id, pid));
+}
 
 const director = runDirector(queue, pool, store);
 
@@ -54,6 +72,15 @@ queueEvents.on('stalled', ({ jobId }) => {
         ),
     );
 });
+queueEvents.on('failed', ({ jobId, failedReason }) => {
+    store.update((s) =>
+        appendEvent(
+            applyQueueEvent(s, { frameId: jobId, kind: 'failed' }),
+            'danger',
+            `frame ${jobId} failed permanently: ${failedReason ?? 'unknown'}`,
+        ),
+    );
+});
 
 const app = express();
 app.get('/health', (_req, res) => {
@@ -66,7 +93,12 @@ createBroadcaster(wss, store, TUNABLES.broadcastHz);
 
 wss.on('connection', (socket) => {
     socket.on('message', (raw) => {
-        const cmd = JSON.parse(raw.toString()) as Command;
+        let cmd: Command;
+        try {
+            cmd = JSON.parse(raw.toString()) as Command;
+        } catch {
+            return; // ignore malformed client input rather than crashing the orchestrator
+        }
         handleCommand(cmd, {
             inject: (count) => void director.seed(count),
             killNode: () => director.killNodeNow(),
@@ -76,6 +108,22 @@ wss.on('connection', (socket) => {
         });
     });
 });
+
+async function shutdown(): Promise<void> {
+    director.stop();
+    pool.shutdown();
+    await Promise.allSettled([
+        queue.close(),
+        queueEvents.close(),
+        redisForQueue.quit(),
+        redisForEvents.quit(),
+        redisForTelemetry.quit(),
+    ]);
+    process.exit(0);
+}
+
+process.on('SIGTERM', () => void shutdown());
+process.on('SIGINT', () => void shutdown());
 
 httpServer.listen(TUNABLES.httpPort, () => {
     process.stdout.write(`orchestrator on :${TUNABLES.httpPort}\n`);
