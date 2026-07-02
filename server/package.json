@@ -1,0 +1,23 @@
+{
+    "name": "server",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts",
+        "test": "vitest run",
+        "build": "tsc -p tsconfig.json --noEmit"
+    },
+    "dependencies": {
+        "@demo/shared": "*",
+        "bullmq": "^5.34.0",
+        "express": "^5.0.1",
+        "ioredis": "5.10.1",
+        "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.10.0",
+        "@types/ws": "^8.5.13",
+        "tsx": "^4.19.2",
+        "vitest": "^2.1.8"
+    }
+}
