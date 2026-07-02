@@ -7,6 +7,8 @@ interface Reduced {
     state: DirectorState;
 }
 
+const CRASH_PROB_PER_TICK = 0.25;
+
 function seed(state: DirectorState, ctx: DirectorCtx): Reduced {
     return {
         effects: [{ count: ctx.batchSize, type: 'seed' }],
@@ -31,7 +33,16 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
     } else if (ctx.queueDepth <= ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
         effects.push({ type: 'kill' });
     }
+    const crashTarget = selectCrashTarget(ctx);
+    if (crashTarget) effects.push({ nodeId: crashTarget, type: 'crash' });
     return { effects, state };
+}
+
+function selectCrashTarget(ctx: DirectorCtx): string | null {
+    const { busyNodeIds, crashRoll, targetRoll } = ctx;
+    if (crashRoll >= CRASH_PROB_PER_TICK || busyNodeIds.length <= 1) return null;
+    const index = Math.min(busyNodeIds.length - 1, Math.floor(targetRoll * busyNodeIds.length));
+    return busyNodeIds[index];
 }
 
 export function reduceDirector(

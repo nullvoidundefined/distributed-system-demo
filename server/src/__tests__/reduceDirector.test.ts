@@ -5,6 +5,8 @@ import type { DirectorCtx, DirectorState } from '../services/director/types.js';
 const baseCtx: DirectorCtx = {
     activeCount: 0,
     batchSize: 16,
+    busyNodeIds: [],
+    crashRoll: 1,
     maxNodes: 6,
     minNodes: 2,
     nodeCount: 2,
@@ -12,6 +14,7 @@ const baseCtx: DirectorCtx = {
     remaining: 0,
     scaleDownDepth: 2,
     scaleUpDepth: 6,
+    targetRoll: 0,
 };
 
 const seeding: DirectorState = { cycle: 1, paused: false, phase: 'seeding' };
@@ -70,6 +73,73 @@ describe('reduceDirector', () => {
         const result = reduceDirector(paused, { type: 'tick' }, baseCtx);
         expect(result.effects).toHaveLength(0);
         expect(result.state.phase).toBe('seeding');
+    });
+
+    it('emits a crash effect when more than one node is busy and the roll hits', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = {
+            ...baseCtx,
+            busyNodeIds: ['node-1', 'node-2'],
+            crashRoll: 0,
+            queueDepth: 3,
+            remaining: 5,
+            targetRoll: 0,
+        };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).toContainEqual({ nodeId: 'node-1', type: 'crash' });
+    });
+
+    it('selects the crash target deterministically from the target roll', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = {
+            ...baseCtx,
+            busyNodeIds: ['node-1', 'node-2', 'node-3'],
+            crashRoll: 0,
+            queueDepth: 3,
+            remaining: 5,
+            targetRoll: 0.99,
+        };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).toContainEqual({ nodeId: 'node-3', type: 'crash' });
+    });
+
+    it('never emits a crash effect while paused, even when the roll hits', () => {
+        const paused: DirectorState = { cycle: 1, paused: true, phase: 'running' };
+        const ctx = {
+            ...baseCtx,
+            busyNodeIds: ['node-1', 'node-2'],
+            crashRoll: 0,
+            queueDepth: 3,
+            remaining: 5,
+        };
+        const { effects } = reduceDirector(paused, { type: 'tick' }, ctx);
+        expect(effects).toHaveLength(0);
+    });
+
+    it('does not crash when one or fewer nodes are busy', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = {
+            ...baseCtx,
+            busyNodeIds: ['node-1'],
+            crashRoll: 0,
+            queueDepth: 3,
+            remaining: 5,
+        };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects.filter((effect) => effect.type === 'crash')).toHaveLength(0);
+    });
+
+    it('does not crash when the roll misses', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = {
+            ...baseCtx,
+            busyNodeIds: ['node-1', 'node-2'],
+            crashRoll: 0.9,
+            queueDepth: 3,
+            remaining: 5,
+        };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects.filter((effect) => effect.type === 'crash')).toHaveLength(0);
     });
 
     it('resume during seeding keeps seeding so the cycle is not skipped', () => {
