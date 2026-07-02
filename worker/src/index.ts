@@ -11,7 +11,7 @@ import {
     DEFAULT_STAGE_MS,
     DEFAULT_STALLED_INTERVAL_MS,
 } from './constants.js';
-import { processFrame } from './stages/processFrame.js';
+import { processFrame } from './processFrame.js';
 
 const heartbeatMs = Number(process.env.HEARTBEAT_INTERVAL_MS ?? DEFAULT_HEARTBEAT_INTERVAL_MS);
 const nodeId = process.env.NODE_ID ?? `node-${process.pid}`;

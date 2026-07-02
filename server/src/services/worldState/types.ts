@@ -4,7 +4,7 @@ import type { WorldState } from '@demo/shared';
 
 export interface QueueEventInput {
     frameId: string;
-    kind: 'added' | 'active' | 'completed' | 'stalled' | 'failed';
+    kind: 'added' | 'completed' | 'stalled' | 'failed';
     priority?: boolean;
 }
 
