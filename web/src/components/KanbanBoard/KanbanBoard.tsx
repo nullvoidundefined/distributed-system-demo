@@ -3,6 +3,8 @@
 import type { Frame } from '@demo/shared';
 import { STAGES } from '@demo/shared';
 
+import { useFlipAnimation } from '../../state/useFlipAnimation';
+
 import styles from './KanbanBoard.module.scss';
 
 interface KanbanBoardProps {
@@ -10,6 +12,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ frames }: KanbanBoardProps) {
+    const registerFlipElement = useFlipAnimation<HTMLLIElement>();
     return (
         <section className={styles.board} aria-label="render pipeline">
             {STAGES.map((stage) => {
@@ -25,6 +28,7 @@ export function KanbanBoard({ frames }: KanbanBoardProps) {
                             {columnFrames.map((frame) => (
                                 <li
                                     key={frame.id}
+                                    ref={registerFlipElement(frame.id)}
                                     className={`${styles.card} ${frame.priority ? styles.priority : ''}`}
                                 >
                                     <span>{frame.id}</span>
