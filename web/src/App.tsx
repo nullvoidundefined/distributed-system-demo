@@ -4,13 +4,12 @@ import { ControlBar } from './components/ControlBar/ControlBar.js';
 import { EventLog } from './components/EventLog/EventLog.js';
 import { KanbanBoard } from './components/KanbanBoard/KanbanBoard.js';
 import { NodeStrip } from './components/NodeStrip/NodeStrip.js';
-import { useCommands } from './state/useCommands.js';
-import { useWorldState } from './state/useWorldState.js';
+import { useOrchestrator } from './state/useOrchestrator.js';
 import styles from './App.module.scss';
 
 export function App() {
-    const world = useWorldState();
-    const send = useCommands();
+    const { send, status, world } = useOrchestrator();
+    const connected = status === 'open';
     return (
         <main className={styles.app}>
             <header className={styles.header}>
@@ -21,8 +20,13 @@ export function App() {
                     Cycle #{world.cycle} · {world.totals.done}/{world.totals.total} frames ·{' '}
                     {world.nodes.length} nodes · {world.phase}
                 </p>
-                <ControlBar phase={world.phase} onCommand={send} />
+                <ControlBar phase={world.phase} disabled={!connected} onCommand={send} />
             </header>
+            {!connected && (
+                <p className={styles.banner} role="status">
+                    {status === 'connecting' ? 'Connecting to orchestrator…' : 'Disconnected. Reconnecting…'}
+                </p>
+            )}
             <KanbanBoard frames={world.frames} />
             <NodeStrip nodes={world.nodes} />
             <EventLog events={world.events} />

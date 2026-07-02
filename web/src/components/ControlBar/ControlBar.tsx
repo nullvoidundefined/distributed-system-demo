@@ -3,25 +3,46 @@
 import type { Command, WorldState } from '@demo/shared';
 import styles from './ControlBar.module.scss';
 
-interface Props {
+interface ControlBarProps {
+    disabled: boolean;
     onCommand: (cmd: Command) => void;
     phase: WorldState['phase'];
 }
 
-export function ControlBar({ onCommand, phase }: Props) {
+export function ControlBar({ disabled, onCommand, phase }: ControlBarProps) {
     const paused = phase === 'paused';
     return (
-        <div className={styles.bar}>
-            <button type="button" onClick={() => onCommand({ type: paused ? 'resume' : 'pause' })}>
+        <div className={styles.bar} role="toolbar" aria-label="Operator controls">
+            <button
+                type="button"
+                className={styles.controlButton}
+                disabled={disabled}
+                onClick={() => onCommand({ type: paused ? 'resume' : 'pause' })}
+            >
                 {paused ? 'Resume' : 'Pause'}
             </button>
-            <button type="button" onClick={() => onCommand({ type: 'inject', count: 5 })}>
+            <button
+                type="button"
+                className={styles.controlButton}
+                disabled={disabled}
+                onClick={() => onCommand({ type: 'inject', count: 5 })}
+            >
                 + Inject 5
             </button>
-            <button type="button" onClick={() => onCommand({ type: 'killNode' })}>
+            <button
+                type="button"
+                className={styles.controlButton}
+                disabled={disabled}
+                onClick={() => onCommand({ type: 'killNode' })}
+            >
                 Kill a node
             </button>
-            <button type="button" onClick={() => onCommand({ type: 'reset' })}>
+            <button
+                type="button"
+                className={styles.controlButton}
+                disabled={disabled}
+                onClick={() => onCommand({ type: 'reset' })}
+            >
                 Reset
             </button>
         </div>

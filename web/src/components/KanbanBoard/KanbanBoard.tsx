@@ -4,15 +4,17 @@ import type { Frame } from '@demo/shared';
 import { STAGES } from '@demo/shared';
 import styles from './KanbanBoard.module.scss';
 
-interface Props {
+interface KanbanBoardProps {
     frames: Frame[];
 }
 
-export function KanbanBoard({ frames }: Props) {
+export function KanbanBoard({ frames }: KanbanBoardProps) {
     return (
         <section className={styles.board} aria-label="render pipeline">
             {STAGES.map((stage) => {
-                const columnFrames = frames.filter((frame) => frame.stage === stage);
+                const columnFrames = frames
+                    .filter((frame) => frame.stage === stage)
+                    .sort((a, b) => Number(b.priority) - Number(a.priority));
                 return (
                     <div key={stage} className={styles.column}>
                         <h2 className={styles.columnTitle}>

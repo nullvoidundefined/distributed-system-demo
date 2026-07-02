@@ -9,7 +9,7 @@
 
 .list {
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 2px;
     margin: 0;
     padding: 0;
@@ -28,18 +28,18 @@
     }
 }
 
-.info span {
+.info .message {
     color: var(--text);
 }
 
-.success span {
+.success .message {
     color: var(--success);
 }
 
-.warn span {
+.warn .message {
     color: var(--warn);
 }
 
-.danger span {
+.danger .message {
     color: var(--danger);
 }
