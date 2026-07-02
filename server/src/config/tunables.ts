@@ -8,6 +8,7 @@ function num(name: string, fallback: number): number {
 export const TUNABLES = {
     batchSize: num('BATCH_SIZE', 16),
     broadcastHz: num('BROADCAST_HZ', 5),
+    heartbeatIntervalMs: num('HEARTBEAT_INTERVAL_MS', 2000),
     highPriorityRatio: 0.15,
     httpPort: num('PORT', 3001),
     jobAttempts: num('JOB_ATTEMPTS', 20),

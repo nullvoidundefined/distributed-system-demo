@@ -29,6 +29,7 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
         const child = fork(WORKER_ENTRY, [], {
             env: {
                 ...process.env,
+                HEARTBEAT_INTERVAL_MS: String(TUNABLES.heartbeatIntervalMs),
                 LOCK_DURATION_MS: String(TUNABLES.lockDurationMs),
                 MAX_STALLED_COUNT: String(TUNABLES.maxStalledCount),
                 NODE_ID: nodeId,
