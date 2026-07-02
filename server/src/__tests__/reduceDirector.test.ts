@@ -33,6 +33,27 @@ describe('reduceDirector', () => {
         expect(effects).toContainEqual({ type: 'spawn' });
     });
 
+    it('does not scale up at exactly the up threshold (spec: depth must exceed it)', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = { ...baseCtx, queueDepth: 6, remaining: 6, activeCount: 3, nodeCount: 3 };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).not.toContainEqual({ type: 'spawn' });
+    });
+
+    it('does not scale down at exactly the down threshold (spec: depth must drain below it)', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = { ...baseCtx, queueDepth: 2, remaining: 4, activeCount: 2, nodeCount: 4 };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).not.toContainEqual({ type: 'kill' });
+    });
+
+    it('never scales down at the minimum node floor', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = { ...baseCtx, queueDepth: 0, remaining: 2, activeCount: 2, nodeCount: 2 };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).not.toContainEqual({ type: 'kill' });
+    });
+
     it('does not scale beyond max nodes', () => {
         const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
         const ctx = { ...baseCtx, queueDepth: 20, remaining: 20, activeCount: 6, nodeCount: 6 };

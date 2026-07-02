@@ -28,9 +28,9 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
         return { effects: [], state: { ...state, phase: 'complete' } };
     }
     const effects: DirectorEffect[] = [];
-    if (ctx.queueDepth >= ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
+    if (ctx.queueDepth > ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
         effects.push({ type: 'spawn' });
-    } else if (ctx.queueDepth <= ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
+    } else if (ctx.queueDepth < ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
         effects.push({ type: 'kill' });
     }
     const crashTarget = selectCrashTarget(ctx);
