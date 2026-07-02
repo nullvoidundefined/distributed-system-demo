@@ -86,6 +86,11 @@ All timing and threshold knobs live in `server/src/config/tunables.ts` and can b
 | `SCALE_UP_DEPTH` / `SCALE_DOWN_DEPTH` | 6 / 2        | Queue-depth thresholds for scaling.                                          |
 | `LOCK_DURATION_MS`                    | 4000         | Worker lock TTL; a crashed worker's frame is recoverable after this expires. |
 | `STALLED_INTERVAL_MS`                 | 2000         | How often a worker checks for stalled (orphaned) frames.                     |
+| `HEARTBEAT_INTERVAL_MS`               | 2000         | How often an idle worker re-announces itself on the telemetry channel.       |
+| `HIGH_PRIORITY_RATIO`                 | 0.15         | Fraction of seeded frames flagged high-priority.                             |
+| `JOB_ATTEMPTS` / `MAX_STALLED_COUNT`  | 20 / 10      | Retry headroom so crashed frames re-queue instead of failing permanently.    |
+
+Autoscale thresholds are strict comparisons per the design spec: scale up when depth *exceeds* `SCALE_UP_DEPTH`, scale down when it drains *below* `SCALE_DOWN_DEPTH`.
 
 The crash-recovery timing is the one thing tuned for the accelerated clock: `LOCK_DURATION_MS` + `STALLED_INTERVAL_MS` bound how fast an orphaned frame comes back (BullMQ's defaults of 30s are far too slow to watch). The integration test `server/src/__tests__/integration/crashRecovery.test.ts` validates that a `SIGKILL`ed worker's frame is recovered and completed by another worker.
 
@@ -98,8 +103,9 @@ npm run test -w web      # component tests (jsdom)
 npm run lint -w web      # eslint (flat config)
 ```
 
-- **Unit:** the Director cycle-engine state machine and the world-state merge reducers are pure functions with full branch coverage; the web client has a component test for priority ordering.
-- **Integration (needs Redis):** a worker is hard-killed with a real `SIGKILL` mid-frame and the orphaned frame is recovered and completed by another worker; a second test asserts graceful worker shutdown on `SIGTERM`.
+- **Unit:** the Director cycle-engine state machine (including pause-gated crash selection and exact autoscale boundaries) and the world-state merge reducers are pure functions; the worker's stage pipeline (`RENDERING` before `COMPOSITING`, full progress ramp) and the WebSocket command router are covered without Redis; the broadcaster's snapshot-on-connect runs against a real `ws` socket.
+- **Integration (needs Redis, run sequentially since files share the queue):** SIGKILL crash recovery asserts the frame stalls, re-queues, and is completed by the *surviving* worker; plain lifecycle (`added -> active -> completed`); priority overtaking (a late high-priority frame completes first); load balancing across two workers; idle heartbeat; graceful `SIGTERM` shutdown.
+- **Web (jsdom):** column-stage mapping, priority ordering and badge, node tags, node-strip fields, event-log severity, and control-bar commands.
 
 ## Project layout
 
@@ -114,3 +120,7 @@ web/       Vite + React SPA: KanbanBoard, NodeStrip, EventLog, ControlBar
 
 - Workers are genuinely separate processes; `Kill a node` sends a real `SIGKILL`, and recovery is real BullMQ stalled-job detection, not a simulation.
 - `docker-compose.yml` is provided for portability, but the native `redis:start` script is the path used here.
+- The web client's single `state/useOrchestrator` hook merges the spec's `useWorldState` + `useCommands` (both concerns share one socket); `VITE_WS_URL` overrides the WebSocket endpoint.
+- The transport sends full `WorldState` snapshots at ~5 Hz rather than diffs; at demo scale (≤20 frames, ≤6 nodes) a snapshot is already small, and every message doubles as a late-join state.
+- A frame that somehow exhausts all 20 attempts is folded into `DONE` on the board (the event log says `failed permanently`) so a cycle can never deadlock; with `MAX_STALLED_COUNT` 10 this is effectively unreachable in practice.
+- Operator `Kill a node` works even while paused (deliberate: pause freezes the Director's own drama, not the operator).
