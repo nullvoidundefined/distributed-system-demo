@@ -93,11 +93,13 @@ The crash-recovery timing is the one thing tuned for the accelerated clock: `LOC
 
 ```bash
 npm test                 # all workspaces
-npm run test -w server   # director + world-state unit tests, plus the crash-recovery integration test (needs Redis)
+npm run test -w server   # director + world-state unit tests, plus integration tests (need Redis)
+npm run test -w web      # component tests (jsdom)
+npm run lint -w web      # eslint (flat config)
 ```
 
-- **Unit:** the Director cycle-engine state machine and the world-state merge reducers are pure functions with full branch coverage.
-- **Integration:** one test against real Redis + real BullMQ proving crash-and-recover.
+- **Unit:** the Director cycle-engine state machine and the world-state merge reducers are pure functions with full branch coverage; the web client has a component test for priority ordering.
+- **Integration (needs Redis):** a worker is hard-killed with a real `SIGKILL` mid-frame and the orphaned frame is recovered and completed by another worker; a second test asserts graceful worker shutdown on `SIGTERM`.
 
 ## Project layout
 
