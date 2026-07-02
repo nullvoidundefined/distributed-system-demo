@@ -64,6 +64,16 @@ describe('worldState reducers', () => {
         expect(world.totals.done).toBe(1);
     });
 
+    it('applyQueueEvent failed marks the frame failed; completed does not', () => {
+        let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'added', frameId: 'f2' });
+        expect(world.frames.map((frame) => frame.failed)).toEqual([false, false]);
+        world = applyQueueEvent(world, { kind: 'failed', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'completed', frameId: 'f2' });
+        expect(world.frames.find((frame) => frame.id === 'f1')?.failed).toBe(true);
+        expect(world.frames.find((frame) => frame.id === 'f2')?.failed).toBe(false);
+    });
+
     it('applyQueueEvent stalled returns the frame to QUEUED and clears its node', () => {
         let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
         world = applyTelemetry(world, {

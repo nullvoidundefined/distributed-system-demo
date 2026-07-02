@@ -4,11 +4,11 @@ import type { Frame, Stage } from '@demo/shared';
 import { KanbanBoard } from '../../components/KanbanBoard/KanbanBoard.js';
 
 function queuedFrame(id: string, priority: boolean): Frame {
-    return { cycle: 1, id, nodeId: null, pct: 0, priority, stage: 'QUEUED' };
+    return { cycle: 1, failed: false, id, nodeId: null, pct: 0, priority, stage: 'QUEUED' };
 }
 
 function stagedFrame(id: string, stage: Stage, nodeId: string | null): Frame {
-    return { cycle: 1, id, nodeId, pct: 50, priority: false, stage };
+    return { cycle: 1, failed: false, id, nodeId, pct: 50, priority: false, stage };
 }
 
 function getColumn(stage: Stage): HTMLElement {
@@ -56,6 +56,22 @@ describe('KanbanBoard', () => {
         const badges = screen.getAllByLabelText('high priority');
         expect(badges).toHaveLength(1);
         expect(badges[0].closest('li')?.textContent).toContain('f-priority');
+    });
+
+    it('marks a permanently failed frame with a failed badge in the DONE column', () => {
+        render(
+            <KanbanBoard
+                frames={[
+                    { ...stagedFrame('f-failed', 'DONE', 'node-2'), failed: true },
+                    stagedFrame('f-ok', 'DONE', null),
+                ]}
+            />,
+        );
+        const badges = screen.getAllByLabelText('failed permanently');
+        expect(badges).toHaveLength(1);
+        const failedCard = badges[0].closest('li')!;
+        expect(failedCard.textContent).toContain('f-failed');
+        expect(within(getColumn('DONE')).getByText('f-failed')).toBeDefined();
     });
 
     it('tags in-flight cards with the owning node', () => {

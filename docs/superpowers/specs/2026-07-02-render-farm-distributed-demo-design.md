@@ -207,5 +207,5 @@ Resolutions and deliberate deviations ratified after the build and the spec-conf
 4. **Shared contract package:** stage names, event types, queue name, and all wire types live in a fourth workspace, `shared/` (`@demo/shared`), instead of `server/src/constants|types/`, because worker and web consume the same contract.
 5. **Web state hook:** `state/useOrchestrator` merges the sketched `useWorldState` + `useCommands` (one socket serves both concerns).
 6. **Autoscale comparisons are strict** ("exceeds" / "drains below"), pinned by boundary unit tests.
-7. **Extra resilience tunables:** `JOB_ATTEMPTS` (20) and `MAX_STALLED_COUNT` (10) exist so a crashed frame re-queues instead of failing permanently; a frame that somehow exhausts them folds into `DONE` (event log records `failed permanently`) so a cycle cannot deadlock.
+7. **Extra resilience tunables:** `JOB_ATTEMPTS` (20) and `MAX_STALLED_COUNT` (10) exist so a crashed frame re-queues instead of failing permanently; a frame that somehow exhausts them lands in `DONE` (so a cycle cannot deadlock) but carries a `failed` flag rendered as a red-bordered `FAILED` card, and the event log records `failed permanently`.
 8. **Operator kill bypasses pause:** pause freezes the Director's autonomous drama (seed/scale/crash); the manual `Kill a node` control still works while paused.

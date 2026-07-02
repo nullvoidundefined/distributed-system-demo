@@ -11,6 +11,12 @@ interface KanbanBoardProps {
     frames: Frame[];
 }
 
+function cardClassName(frame: Frame): string {
+    if (frame.failed) return `${styles.card} ${styles.failed}`;
+    if (frame.priority) return `${styles.card} ${styles.priority}`;
+    return styles.card;
+}
+
 export function KanbanBoard({ frames }: KanbanBoardProps) {
     const registerFlipElement = useFlipAnimation<HTMLLIElement>();
     return (
@@ -29,10 +35,18 @@ export function KanbanBoard({ frames }: KanbanBoardProps) {
                                 <li
                                     key={frame.id}
                                     ref={registerFlipElement(frame.id)}
-                                    className={`${styles.card} ${frame.priority ? styles.priority : ''}`}
+                                    className={cardClassName(frame)}
                                 >
                                     <span>{frame.id}</span>
-                                    {frame.priority && (
+                                    {frame.failed && (
+                                        <span
+                                            className={styles.failedBadge}
+                                            aria-label="failed permanently"
+                                        >
+                                            failed
+                                        </span>
+                                    )}
+                                    {frame.priority && !frame.failed && (
                                         <span className={styles.badge} aria-label="high priority">
                                             priority
                                         </span>

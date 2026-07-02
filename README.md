@@ -124,5 +124,5 @@ web/       Vite + React SPA: KanbanBoard, NodeStrip, EventLog, ControlBar
 - `docker-compose.yml` is provided for portability, but the native `redis:start` script is the path used here.
 - The web client's single `state/useOrchestrator` hook merges the spec's `useWorldState` + `useCommands` (both concerns share one socket); `VITE_WS_URL` overrides the WebSocket endpoint.
 - The transport sends full `WorldState` snapshots at ~5 Hz rather than diffs; at demo scale (≤20 frames, ≤6 nodes) a snapshot is already small, and every message doubles as a late-join state.
-- A frame that somehow exhausts all 20 attempts is folded into `DONE` on the board (the event log says `failed permanently`) so a cycle can never deadlock; with `MAX_STALLED_COUNT` 10 this is effectively unreachable in practice.
+- A frame that somehow exhausts all 20 attempts lands in `DONE` as a red-bordered `FAILED` card (so a cycle can never deadlock; the event log says `failed permanently`); with `MAX_STALLED_COUNT` 10 this is effectively unreachable in practice. To see it, run with `MAX_STALLED_COUNT=0 JOB_ATTEMPTS=1` and kill a node.
 - Operator `Kill a node` works even while paused (deliberate: pause freezes the Director's own drama, not the operator).
