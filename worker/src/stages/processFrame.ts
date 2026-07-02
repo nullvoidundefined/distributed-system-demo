@@ -3,11 +3,10 @@
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type { FrameJobData, NodeState, Stage, TelemetryMsg } from '@demo/shared';
-import { CRASH_EXIT_CODE, RENDER_STEPS } from '../constants.js';
+import { RENDER_STEPS } from '../constants.js';
 import { publishTelemetry } from '../telemetry/publishTelemetry.js';
 
 export interface ProcessDeps {
-    crashRoll: () => boolean;
     getCompleted: () => number;
     nodeId: string;
     pid: number;
@@ -27,9 +26,6 @@ async function runStage(
 ): Promise<void> {
     const stepMs = deps.stageMs / RENDER_STEPS;
     for (let step = 1; step <= RENDER_STEPS; step += 1) {
-        if (deps.crashRoll()) {
-            process.exit(CRASH_EXIT_CODE); // simulate a hard crash mid-stage (real process death)
-        }
         await sleep(stepMs);
         const pct = Math.round((step / RENDER_STEPS) * 100);
         const msg: TelemetryMsg = {

@@ -13,7 +13,7 @@ let events: QueueEvents;
 let conn: Redis;
 const children: ChildProcess[] = [];
 
-function spawnWorker(nodeId: string, crashProb = 0): ChildProcess {
+function spawnWorker(nodeId: string): ChildProcess {
     const child = fork(WORKER_ENTRY, [], {
         execArgv: ['--import', 'tsx'],
         env: {
@@ -23,7 +23,6 @@ function spawnWorker(nodeId: string, crashProb = 0): ChildProcess {
             STAGE_MS: '1200',
             LOCK_DURATION_MS: '4000',
             STALLED_INTERVAL_MS: '2000',
-            CRASH_PROB: String(crashProb),
         },
     });
     children.push(child);
@@ -49,18 +48,19 @@ afterEach(async () => {
     await conn.quit();
 });
 
-test('a frame orphaned by a crashed worker is recovered and completed by another worker', async () => {
-    const doomed = spawnWorker('node-doomed', 1); // crashes on first tick
-    await new Promise((resolve) => setTimeout(resolve, 500));
+test('a frame orphaned when a worker is SIGKILLed mid-job is recovered by another worker', async () => {
+    const doomed = spawnWorker('node-doomed'); // healthy worker, killed externally below
+    await new Promise((resolve) => setTimeout(resolve, 600));
     await queue.add(
         'frame',
         { frameId: 'f1', cycle: 0, priority: false },
         { jobId: 'f1', attempts: 20 },
     );
 
+    // let the worker pick up the frame and begin processing, then hard-kill it mid-job
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    expect(doomed.killed || doomed.exitCode !== null).toBe(true);
-    spawnWorker('node-healthy', 0);
+    doomed.kill('SIGKILL');
+    spawnWorker('node-healthy');
 
     const completedId = await new Promise<string>((resolve) => {
         events.on('completed', ({ jobId }) => resolve(jobId));

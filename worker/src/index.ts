@@ -14,7 +14,6 @@ import { processFrame } from './stages/processFrame.js';
 const nodeId = process.env.NODE_ID ?? `node-${process.pid}`;
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const stageMs = Number(process.env.STAGE_MS ?? DEFAULT_STAGE_MS);
-const crashProbability = Number(process.env.CRASH_PROB ?? 0);
 
 const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 const publisher = new Redis(redisUrl);
@@ -39,7 +38,6 @@ const worker = new Worker<FrameJobData>(
     QUEUE_NAME,
     async (job) => {
         await processFrame(job, {
-            crashRoll: () => Math.random() < crashProbability,
             getCompleted: () => completed,
             nodeId,
             pid: process.pid,
