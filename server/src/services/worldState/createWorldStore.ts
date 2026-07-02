@@ -1,13 +1,7 @@
 /** In-memory holder for the current WorldState with an update helper. */
 
-import type { WorldState } from '@demo/shared';
-
 import { emptyWorld } from './emptyWorld.js';
-
-export interface WorldStore {
-    get: () => WorldState;
-    update: (fn: (state: WorldState) => WorldState) => void;
-}
+import type { WorldStore } from './types.js';
 
 export function createWorldStore(): WorldStore {
     let state = emptyWorld(1);

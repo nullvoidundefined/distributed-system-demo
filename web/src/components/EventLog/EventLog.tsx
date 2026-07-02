@@ -25,7 +25,9 @@ export function EventLog({ events }: EventLogProps) {
             <ul className={styles.list}>
                 {events.map((event) => (
                     <li key={event.id} className={`${styles.row} ${LEVEL_CLASS[event.level]}`}>
-                        <time dateTime={new Date(event.ts).toISOString()}>{formatTime(event.ts)}</time>
+                        <time dateTime={new Date(event.ts).toISOString()}>
+                            {formatTime(event.ts)}
+                        </time>
                         <span className={styles.message}>{event.message}</span>
                     </li>
                 ))}

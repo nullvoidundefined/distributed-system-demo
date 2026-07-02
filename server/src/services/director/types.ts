@@ -25,3 +25,11 @@ export type DirectorAction =
 
 export type DirectorEffect =
     { type: 'seed'; count: number } | { type: 'spawn' } | { type: 'kill' } | { type: 'resetQueue' };
+
+export interface DirectorRuntime {
+    dispatch: (action: DirectorAction) => Promise<void>;
+    killNodeNow: () => void;
+    priorityOf: (frameId: string) => boolean;
+    seed: (count: number) => Promise<void>;
+    stop: () => void;
+}

@@ -26,7 +26,7 @@ export function ControlBar({ disabled, onCommand, phase }: ControlBarProps) {
                 type="button"
                 className={styles.controlButton}
                 disabled={disabled}
-                onClick={() => onCommand({ type: 'inject', count: 5 })}
+                onClick={() => onCommand({ count: 5, type: 'inject' })}
             >
                 + Inject 5
             </button>

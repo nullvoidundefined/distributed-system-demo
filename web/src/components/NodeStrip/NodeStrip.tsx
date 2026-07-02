@@ -17,7 +17,10 @@ export function NodeStrip({ nodes }: NodeStripProps) {
     return (
         <section className={styles.strip} aria-label="worker nodes">
             {nodes.map((node) => (
-                <article key={node.id} className={`${styles.node} ${STATE_CLASS[node.state] ?? ''}`}>
+                <article
+                    key={node.id}
+                    className={`${styles.node} ${STATE_CLASS[node.state] ?? ''}`}
+                >
                     <header className={styles.head}>
                         <strong>{node.id}</strong>
                         <span className={styles.pid}>pid {node.pid}</span>
@@ -25,7 +28,11 @@ export function NodeStrip({ nodes }: NodeStripProps) {
                     <div className={styles.state}>{node.state}</div>
                     <div className={styles.frame}>{node.frameId ?? 'idle'}</div>
                     <div className={styles.track}>
-                        <span className={styles.fill} style={{ width: `${node.pct}%` }} aria-hidden="true" />
+                        <span
+                            className={styles.fill}
+                            style={{ width: `${node.pct}%` }}
+                            aria-hidden="true"
+                        />
                     </div>
                     <footer className={styles.done}>{node.completed} done</footer>
                 </article>

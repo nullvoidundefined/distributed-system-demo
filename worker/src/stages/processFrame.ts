@@ -39,7 +39,7 @@ async function runStage(
             stage,
             state,
         };
-        await job.updateProgress({ stage, pct, nodeId: deps.nodeId });
+        await job.updateProgress({ nodeId: deps.nodeId, pct, stage });
         publishTelemetry(deps.publisher, msg);
     }
 }

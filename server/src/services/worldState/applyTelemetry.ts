@@ -18,12 +18,12 @@ export function applyTelemetry(state: WorldState, msg: TelemetryMsg): WorldState
         frame.id === msg.frameId && msg.stage
             ? {
                   ...frame,
-                  stage: msg.stage,
                   nodeId: msg.nodeId,
                   pct: msg.pct,
                   priority: msg.priority,
+                  stage: msg.stage,
               }
             : frame,
     );
-    return { ...state, nodes, frames };
+    return { ...state, frames, nodes };
 }

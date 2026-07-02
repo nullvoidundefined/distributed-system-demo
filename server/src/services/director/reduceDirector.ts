@@ -9,7 +9,7 @@ interface Reduced {
 
 function seed(state: DirectorState, ctx: DirectorCtx): Reduced {
     return {
-        effects: [{ type: 'seed', count: ctx.batchSize }],
+        effects: [{ count: ctx.batchSize, type: 'seed' }],
         state: { ...state, phase: 'running' },
     };
 }
@@ -17,7 +17,7 @@ function seed(state: DirectorState, ctx: DirectorCtx): Reduced {
 function reset(state: DirectorState): Reduced {
     return {
         effects: [{ type: 'resetQueue' }],
-        state: { ...state, phase: 'seeding', cycle: state.cycle + 1 },
+        state: { ...state, cycle: state.cycle + 1, phase: 'seeding' },
     };
 }
 

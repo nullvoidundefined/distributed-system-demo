@@ -2,11 +2,7 @@
 
 import type { Frame, WorldState } from '@demo/shared';
 
-export interface QueueEventInput {
-    frameId: string;
-    kind: 'added' | 'active' | 'completed' | 'stalled' | 'failed';
-    priority?: boolean;
-}
+import type { QueueEventInput } from './types.js';
 
 export function applyQueueEvent(state: WorldState, evt: QueueEventInput): WorldState {
     if (evt.kind === 'added') return addQueuedFrame(state, evt.frameId, evt.priority ?? false);
@@ -33,14 +29,14 @@ function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): 
 
 function markFrameDone(state: WorldState, frameId: string): WorldState {
     const frames = state.frames.map((frame) =>
-        frame.id === frameId ? { ...frame, stage: 'DONE' as const, pct: 100 } : frame,
+        frame.id === frameId ? { ...frame, pct: 100, stage: 'DONE' as const } : frame,
     );
     return { ...state, frames, totals: { ...state.totals, done: state.totals.done + 1 } };
 }
 
 function requeueFrame(state: WorldState, frameId: string): WorldState {
     const frames = state.frames.map((frame) =>
-        frame.id === frameId ? { ...frame, stage: 'QUEUED' as const, nodeId: null, pct: 0 } : frame,
+        frame.id === frameId ? { ...frame, nodeId: null, pct: 0, stage: 'QUEUED' as const } : frame,
     );
     return { ...state, frames };
 }

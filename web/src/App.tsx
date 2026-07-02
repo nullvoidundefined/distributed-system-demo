@@ -24,7 +24,9 @@ export function App() {
             </header>
             {!connected && (
                 <p className={styles.banner} role="status">
-                    {status === 'connecting' ? 'Connecting to orchestrator…' : 'Disconnected. Reconnecting…'}
+                    {status === 'connecting'
+                        ? 'Connecting to orchestrator…'
+                        : 'Disconnected. Reconnecting…'}
                 </p>
             )}
             <KanbanBoard frames={world.frames} />

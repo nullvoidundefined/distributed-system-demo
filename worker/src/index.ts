@@ -47,11 +47,11 @@ const worker = new Worker<FrameJobData>(
         });
     },
     {
-        connection,
         concurrency: 1,
+        connection,
         lockDuration: Number(process.env.LOCK_DURATION_MS ?? DEFAULT_LOCK_DURATION_MS),
-        stalledInterval: Number(process.env.STALLED_INTERVAL_MS ?? DEFAULT_STALLED_INTERVAL_MS),
         maxStalledCount: Number(process.env.MAX_STALLED_COUNT ?? DEFAULT_MAX_STALLED_COUNT),
+        stalledInterval: Number(process.env.STALLED_INTERVAL_MS ?? DEFAULT_STALLED_INTERVAL_MS),
     },
 );
 

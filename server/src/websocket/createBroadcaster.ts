@@ -2,15 +2,15 @@
 
 import type { WebSocketServer } from 'ws';
 
-import type { WorldStore } from '../services/worldState/createWorldStore.js';
+import type { WorldStore } from '../services/worldState/types.js';
 
 export function createBroadcaster(wss: WebSocketServer, store: WorldStore, hz: number): () => void {
     wss.on('connection', (socket) => {
-        socket.send(JSON.stringify({ type: 'snapshot', state: store.get() }));
+        socket.send(JSON.stringify({ state: store.get(), type: 'snapshot' }));
     });
     const timer = setInterval(
         () => {
-            const payload = JSON.stringify({ type: 'snapshot', state: store.get() });
+            const payload = JSON.stringify({ state: store.get(), type: 'snapshot' });
             for (const client of wss.clients) {
                 if (client.readyState === client.OPEN) client.send(payload);
             }

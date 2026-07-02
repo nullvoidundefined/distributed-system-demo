@@ -5,25 +5,9 @@ import { fileURLToPath } from 'node:url';
 
 import { TUNABLES } from '../../config/tunables.js';
 
+import type { NodePool, NodePoolDeps, SpawnedNode } from './types.js';
+
 const WORKER_ENTRY = fileURLToPath(new URL('../../../../worker/src/index.ts', import.meta.url));
-
-export interface NodePoolDeps {
-    onExit: (nodeId: string, crashed: boolean) => void;
-}
-
-export interface SpawnedNode {
-    id: string;
-    pid: number;
-}
-
-export interface NodePool {
-    crashRandom: (busyIds: string[]) => string | null;
-    ids: () => string[];
-    killIdle: (idleIds: string[]) => string | null;
-    shutdown: () => void;
-    size: () => number;
-    spawn: () => SpawnedNode;
-}
 
 function wasCrash(code: number | null, signal: NodeJS.Signals | null): boolean {
     if (signal === 'SIGKILL') return true;
@@ -43,7 +27,6 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
         counter += 1;
         const nodeId = `node-${counter}`;
         const child = fork(WORKER_ENTRY, [], {
-            execArgv: ['--import', 'tsx'],
             env: {
                 ...process.env,
                 LOCK_DURATION_MS: String(TUNABLES.lockDurationMs),
@@ -53,6 +36,7 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
                 STAGE_MS: String(TUNABLES.stageMs),
                 STALLED_INTERVAL_MS: String(TUNABLES.stalledIntervalMs),
             },
+            execArgv: ['--import', 'tsx'],
         });
         children.set(nodeId, child);
         child.on('exit', (code, signal) => {
@@ -78,14 +62,14 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
     }
 
     return {
-        spawn,
-        killIdle,
         crashRandom,
-        size: () => children.size,
         ids: () => [...children.keys()],
+        killIdle,
         shutdown: () => {
             for (const child of children.values()) child.kill('SIGKILL');
             children.clear();
         },
+        size: () => children.size,
+        spawn,
     };
 }

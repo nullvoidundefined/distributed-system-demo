@@ -4,23 +4,15 @@ import type { WorldState } from '@demo/shared';
 import type { Queue } from 'bullmq';
 
 import { TUNABLES } from '../../config/tunables.js';
-import type { NodePool } from '../nodePool/createNodePool.js';
+import type { NodePool } from '../nodePool/types.js';
 import { appendEvent } from '../worldState/appendEvent.js';
 import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
-import type { WorldStore } from '../worldState/createWorldStore.js';
+import type { WorldStore } from '../worldState/types.js';
 
 import { reduceDirector } from './reduceDirector.js';
-import type { DirectorAction, DirectorEffect, DirectorState } from './types.js';
+import type { DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
 
 const CRASH_PROB_PER_TICK = 0.25;
-
-export interface DirectorRuntime {
-    dispatch: (action: DirectorAction) => Promise<void>;
-    killNodeNow: () => void;
-    priorityOf: (frameId: string) => boolean;
-    seed: (count: number) => Promise<void>;
-    stop: () => void;
-}
 
 function idleCtx(): ReturnType<typeof buildCtx> {
     return buildCtx(0, 0, 1, 0);
