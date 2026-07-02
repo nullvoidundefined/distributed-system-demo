@@ -103,6 +103,8 @@ npm run test -w web      # component tests (jsdom)
 npm run lint -w web      # eslint (flat config)
 ```
 
+Stop `npm run dev` before running the server integration tests: the demo and the tests share the same Redis queue, so a running demo steals test jobs (and the tests flush Redis).
+
 - **Unit:** the Director cycle-engine state machine (including pause-gated crash selection and exact autoscale boundaries) and the world-state merge reducers are pure functions; the worker's stage pipeline (`RENDERING` before `COMPOSITING`, full progress ramp) and the WebSocket command router are covered without Redis; the broadcaster's snapshot-on-connect runs against a real `ws` socket.
 - **Integration (needs Redis, run sequentially since files share the queue):** SIGKILL crash recovery asserts the frame stalls, re-queues, and is completed by the *surviving* worker; plain lifecycle (`added -> active -> completed`); priority overtaking (a late high-priority frame completes first); load balancing across two workers; idle heartbeat; graceful `SIGTERM` shutdown.
 - **Web (jsdom):** column-stage mapping, priority ordering and badge, node tags, node-strip fields, event-log severity, and control-bar commands.
