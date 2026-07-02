@@ -1,0 +1,42 @@
+.app {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 16px;
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+.header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 4px 16px;
+}
+
+.title {
+    grid-column: 1;
+    margin: 0;
+    font-size: 18px;
+}
+
+.dim {
+    color: var(--muted);
+    font-weight: 400;
+}
+
+.stats {
+    grid-column: 1;
+    margin: 0;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.header .app :global(button) {
+    grid-column: 2;
+}
+
+.header > :last-child {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}

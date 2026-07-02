@@ -1,0 +1,65 @@
+.strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.node {
+    width: 168px;
+    padding: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.head {
+    display: flex;
+    justify-content: space-between;
+}
+
+.pid {
+    color: var(--muted);
+}
+
+.state {
+    margin: 4px 0;
+    color: var(--info);
+    text-transform: capitalize;
+}
+
+.crashed {
+    border-color: var(--danger);
+
+    .state {
+        color: var(--danger);
+    }
+}
+
+.spawning {
+    border-style: dashed;
+    border-color: var(--warn);
+}
+
+.frame {
+    color: var(--muted);
+}
+
+.track {
+    height: 6px;
+    margin: 6px 0;
+    overflow: hidden;
+    background: #0d1117;
+    border-radius: 4px;
+}
+
+.fill {
+    display: block;
+    height: 100%;
+    background: var(--success);
+    transition: width 0.3s ease;
+}
+
+.done {
+    color: var(--muted);
+}

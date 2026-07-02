@@ -1,0 +1,23 @@
+.bar {
+    display: flex;
+    gap: 8px;
+
+    button {
+        padding: 6px 10px;
+        color: var(--text);
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font: inherit;
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--info);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--info);
+            outline-offset: 2px;
+        }
+    }
+}

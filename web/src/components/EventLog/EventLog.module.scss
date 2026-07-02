@@ -1,0 +1,45 @@
+.log {
+    height: 220px;
+    padding: 8px;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 12px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    padding: 2px 4px;
+
+    time {
+        flex-shrink: 0;
+        color: var(--muted);
+    }
+}
+
+.info span {
+    color: var(--text);
+}
+
+.success span {
+    color: var(--success);
+}
+
+.warn span {
+    color: var(--warn);
+}
+
+.danger span {
+    color: var(--danger);
+}
