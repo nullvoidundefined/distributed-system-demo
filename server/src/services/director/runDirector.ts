@@ -1,6 +1,7 @@
 /** Drives the Director: randomized ticks, applies effects to the queue and node pool, logs events. */
 
 import type { Queue } from 'bullmq';
+import type { WorldState } from '@demo/shared';
 import { TUNABLES } from '../../config/tunables.js';
 import type { NodePool } from '../nodePool/createNodePool.js';
 import type { WorldStore } from '../worldState/createWorldStore.js';
@@ -19,15 +20,16 @@ export interface DirectorRuntime {
 }
 
 function idleCtx(): ReturnType<typeof buildCtx> {
-    return buildCtx(0, 0, 1);
+    return buildCtx(0, 0, 1, 0);
 }
 
-function buildCtx(queueDepth: number, activeCount: number, remaining: number) {
+function buildCtx(queueDepth: number, activeCount: number, remaining: number, nodeCount: number) {
     return {
         activeCount,
         batchSize: TUNABLES.batchSize,
         maxNodes: TUNABLES.maxNodes,
         minNodes: TUNABLES.minNodes,
+        nodeCount,
         queueDepth,
         remaining,
         scaleDownDepth: TUNABLES.scaleDownDepth,
@@ -35,8 +37,12 @@ function buildCtx(queueDepth: number, activeCount: number, remaining: number) {
     };
 }
 
+function displayPhase(state: DirectorState): WorldState['phase'] {
+    return state.paused ? 'paused' : state.phase;
+}
+
 export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): DirectorRuntime {
-    let state: DirectorState = { cycle: 1, nodeCount: pool.size(), phase: 'seeding' };
+    let state: DirectorState = { cycle: 1, paused: false, phase: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
     const priorityById = new Map<string, boolean>();
@@ -60,7 +66,6 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
 
     function spawnNode(): void {
         const id = pool.spawn();
-        state = { ...state, nodeCount: pool.size() };
         store.update((s) => appendEvent(s, 'success', `autoscaling up: ${id} spawned`));
     }
 
@@ -122,10 +127,11 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
             (counts.waiting ?? 0) + (counts.prioritized ?? 0),
             counts.active ?? 0,
             state.phase === 'seeding' ? 1 : remaining,
+            pool.size(),
         );
         const result = reduceDirector(state, { type: 'tick' }, ctx);
         state = result.state;
-        store.update((s) => ({ ...s, cycle: state.cycle, phase: state.phase }));
+        store.update((s) => ({ ...s, cycle: state.cycle, phase: displayPhase(state) }));
         await applyEffects(result.effects);
         maybeCrash();
         schedule();
@@ -143,7 +149,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
         dispatch: async (action) => {
             const result = reduceDirector(state, action, idleCtx());
             state = result.state;
-            store.update((s) => ({ ...s, phase: state.phase }));
+            store.update((s) => ({ ...s, phase: displayPhase(state) }));
             await applyEffects(result.effects);
         },
         killNodeNow: () => {

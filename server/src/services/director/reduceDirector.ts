@@ -26,9 +26,9 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
         return { effects: [], state: { ...state, phase: 'complete' } };
     }
     const effects: DirectorEffect[] = [];
-    if (ctx.queueDepth >= ctx.scaleUpDepth && state.nodeCount < ctx.maxNodes) {
+    if (ctx.queueDepth >= ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
         effects.push({ type: 'spawn' });
-    } else if (ctx.queueDepth <= ctx.scaleDownDepth && state.nodeCount > ctx.minNodes) {
+    } else if (ctx.queueDepth <= ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
         effects.push({ type: 'kill', strategy: 'idle' });
     }
     return { effects, state };
@@ -39,10 +39,10 @@ export function reduceDirector(
     action: DirectorAction,
     ctx: DirectorCtx,
 ): Reduced {
-    if (action.type === 'pause') return { effects: [], state: { ...state, phase: 'paused' } };
-    if (action.type === 'resume') return { effects: [], state: { ...state, phase: 'running' } };
+    if (action.type === 'pause') return { effects: [], state: { ...state, paused: true } };
+    if (action.type === 'resume') return { effects: [], state: { ...state, paused: false } };
     if (action.type === 'reset') return reset(state);
-    if (state.phase === 'paused') return { effects: [], state };
+    if (state.paused) return { effects: [], state };
     if (state.phase === 'seeding') return seed(state, ctx);
     if (state.phase === 'complete') return reset(state);
     return run(state, ctx);

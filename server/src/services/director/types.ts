@@ -1,10 +1,10 @@
 /** Types for the Director: the pure cycle-engine state machine and its effects. */
 
-export type DirectorPhase = 'seeding' | 'running' | 'complete' | 'paused';
+export type DirectorPhase = 'seeding' | 'running' | 'complete';
 
 export interface DirectorState {
     cycle: number;
-    nodeCount: number;
+    paused: boolean;
     phase: DirectorPhase;
 }
 
@@ -13,6 +13,7 @@ export interface DirectorCtx {
     batchSize: number;
     maxNodes: number;
     minNodes: number;
+    nodeCount: number;
     queueDepth: number;
     remaining: number;
     scaleDownDepth: number;
