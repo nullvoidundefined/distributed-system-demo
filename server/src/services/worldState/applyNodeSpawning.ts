@@ -1,6 +1,7 @@
 /** Adds a placeholder node in the 'spawning' state so a newly forked worker appears immediately. */
 
 import type { WorkerNode, WorldState } from '@demo/shared';
+
 import { upsertNode } from './upsertNode.js';
 
 export function applyNodeSpawning(state: WorldState, nodeId: string, pid: number): WorldState {

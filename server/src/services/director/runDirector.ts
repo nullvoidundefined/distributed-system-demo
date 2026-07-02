@@ -1,12 +1,14 @@
 /** Drives the Director: randomized ticks, applies effects to the queue and node pool, logs events. */
 
-import type { Queue } from 'bullmq';
 import type { WorldState } from '@demo/shared';
+import type { Queue } from 'bullmq';
+
 import { TUNABLES } from '../../config/tunables.js';
 import type { NodePool } from '../nodePool/createNodePool.js';
-import type { WorldStore } from '../worldState/createWorldStore.js';
 import { appendEvent } from '../worldState/appendEvent.js';
 import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
+import type { WorldStore } from '../worldState/createWorldStore.js';
+
 import { reduceDirector } from './reduceDirector.js';
 import type { DirectorAction, DirectorEffect, DirectorState } from './types.js';
 

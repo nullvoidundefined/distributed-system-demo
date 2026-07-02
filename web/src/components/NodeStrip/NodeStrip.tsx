@@ -1,6 +1,7 @@
 /** Worker-node strip: one card per live process with status, current frame, and progress. */
 
 import type { NodeState, WorkerNode } from '@demo/shared';
+
 import styles from './NodeStrip.module.scss';
 
 interface NodeStripProps {

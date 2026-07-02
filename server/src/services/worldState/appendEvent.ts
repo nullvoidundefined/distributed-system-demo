@@ -1,6 +1,7 @@
 /** Appends a log event to the WorldState, keeping the rolling log capped and its ids monotonic. */
 
 import type { EventLevel, WorldState } from '@demo/shared';
+
 import { MAX_EVENTS } from './constants.js';
 
 export function appendEvent(state: WorldState, level: EventLevel, message: string): WorldState {

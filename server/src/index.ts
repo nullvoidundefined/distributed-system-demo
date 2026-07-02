@@ -1,9 +1,11 @@
 /** Orchestrator bootstrap: Redis, queue, queue-events wiring, node pool, director, and WebSocket server. */
 
 import { createServer } from 'node:http';
+
+import type { Command } from '@demo/shared';
 import express from 'express';
 import { WebSocketServer } from 'ws';
-import type { Command } from '@demo/shared';
+
 import { createRedisConnection } from './clients/redis/createRedisConnection.js';
 import { TUNABLES } from './config/tunables.js';
 import { createQueueEvents } from './queue/createQueueEvents.js';

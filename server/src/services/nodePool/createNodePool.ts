@@ -2,6 +2,7 @@
 
 import { fork, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+
 import { TUNABLES } from '../../config/tunables.js';
 
 const WORKER_ENTRY = fileURLToPath(new URL('../../../../worker/src/index.ts', import.meta.url));

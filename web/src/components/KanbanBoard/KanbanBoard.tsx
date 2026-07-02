@@ -2,6 +2,7 @@
 
 import type { Frame } from '@demo/shared';
 import { STAGES } from '@demo/shared';
+
 import styles from './KanbanBoard.module.scss';
 
 interface KanbanBoardProps {

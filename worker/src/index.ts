@@ -1,8 +1,9 @@
 /** Worker child-process entry: binds a BullMQ Worker to the render queue and reports telemetry. */
 
+import { QUEUE_NAME, TELEMETRY_CHANNEL, type FrameJobData, type TelemetryMsg } from '@demo/shared';
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { QUEUE_NAME, TELEMETRY_CHANNEL, type FrameJobData, type TelemetryMsg } from '@demo/shared';
+
 import {
     DEFAULT_LOCK_DURATION_MS,
     DEFAULT_MAX_STALLED_COUNT,

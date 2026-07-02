@@ -1,7 +1,8 @@
 /** Single WebSocket to the orchestrator: exposes the latest WorldState, connection status, and a sender. */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Command, WorldState } from '@demo/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
 import { WS_URL } from '../config/websocket.js';
 
 export type ConnectionStatus = 'connecting' | 'open' | 'closed';

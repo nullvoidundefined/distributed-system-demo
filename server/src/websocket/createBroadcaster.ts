@@ -1,6 +1,7 @@
 /** Broadcasts throttled WorldState snapshots to all connected WebSocket clients. */
 
 import type { WebSocketServer } from 'ws';
+
 import type { WorldStore } from '../services/worldState/createWorldStore.js';
 
 export function createBroadcaster(wss: WebSocketServer, store: WorldStore, hz: number): () => void {

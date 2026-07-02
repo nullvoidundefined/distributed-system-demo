@@ -1,6 +1,7 @@
 /** In-memory holder for the current WorldState with an update helper. */
 
 import type { WorldState } from '@demo/shared';
+
 import { emptyWorld } from './emptyWorld.js';
 
 export interface WorldStore {

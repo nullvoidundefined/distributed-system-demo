@@ -1,6 +1,7 @@
 /** Scrolling, color-coded event log narrating what the graphics show. */
 
 import type { EventLevel, LogEvent } from '@demo/shared';
+
 import styles from './EventLog.module.scss';
 
 interface EventLogProps {

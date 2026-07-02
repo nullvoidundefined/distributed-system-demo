@@ -1,11 +1,11 @@
 /** Root layout: header with live stats and controls, Kanban board, worker-node strip, event log. */
 
+import styles from './App.module.scss';
 import { ControlBar } from './components/ControlBar/ControlBar.js';
 import { EventLog } from './components/EventLog/EventLog.js';
 import { KanbanBoard } from './components/KanbanBoard/KanbanBoard.js';
 import { NodeStrip } from './components/NodeStrip/NodeStrip.js';
 import { useOrchestrator } from './state/useOrchestrator.js';
-import styles from './App.module.scss';
 
 export function App() {
     const { send, status, world } = useOrchestrator();

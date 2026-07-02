@@ -1,8 +1,9 @@
 /** Runs a single frame through RENDERING then COMPOSITING, emitting progress after each tick. */
 
+import type { FrameJobData, NodeState, Stage, TelemetryMsg } from '@demo/shared';
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
-import type { FrameJobData, NodeState, Stage, TelemetryMsg } from '@demo/shared';
+
 import { RENDER_STEPS } from '../constants.js';
 import { publishTelemetry } from '../telemetry/publishTelemetry.js';
 

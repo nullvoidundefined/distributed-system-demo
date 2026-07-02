@@ -1,6 +1,7 @@
 /** Folds a worker telemetry snapshot into the WorldState: updates the node and its owning frame. */
 
 import type { TelemetryMsg, WorkerNode, WorldState } from '@demo/shared';
+
 import { upsertNode } from './upsertNode.js';
 
 export function applyTelemetry(state: WorldState, msg: TelemetryMsg): WorldState {
