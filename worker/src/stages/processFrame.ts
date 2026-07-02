@@ -34,14 +34,14 @@ async function runStage(
         await sleep(stepMs);
         const pct = Math.round((step / STEPS) * 100);
         const msg: TelemetryMsg = {
-            nodeId: deps.nodeId,
-            pid: deps.pid,
-            state,
-            frameId: String(job.data.frameId),
-            stage,
-            pct,
             completed: deps.getCompleted(),
+            frameId: String(job.data.frameId),
+            nodeId: deps.nodeId,
+            pct,
+            pid: deps.pid,
             priority: Boolean(job.data.priority),
+            stage,
+            state,
         };
         await job.updateProgress({ stage, pct, nodeId: deps.nodeId });
         publishTelemetry(deps.publisher, msg);

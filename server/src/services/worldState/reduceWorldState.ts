@@ -7,11 +7,11 @@ const MAX_EVENTS = 200;
 export function emptyWorld(cycle: number): WorldState {
     return {
         cycle,
-        phase: 'seeding',
+        events: [],
         frames: [],
         nodes: [],
-        events: [],
-        totals: { total: 0, done: 0 },
+        phase: 'seeding',
+        totals: { done: 0, total: 0 },
     };
 }
 
@@ -28,12 +28,12 @@ function upsertNode(nodes: WorkerNode[], patch: WorkerNode): WorkerNode[] {
 
 export function applyTelemetry(state: WorldState, msg: TelemetryMsg): WorldState {
     const node: WorkerNode = {
+        completed: msg.completed,
+        frameId: msg.frameId,
         id: msg.nodeId,
+        pct: msg.pct,
         pid: msg.pid,
         state: msg.state,
-        frameId: msg.frameId,
-        pct: msg.pct,
-        completed: msg.completed,
     };
     const nodes = upsertNode(state.nodes, node);
     const frames = state.frames.map((frame) =>
@@ -60,12 +60,12 @@ export function applyQueueEvent(
 ): WorldState {
     if (evt.kind === 'added') {
         const frame: Frame = {
-            id: evt.frameId,
             cycle: state.cycle,
-            priority: evt.priority ?? false,
-            stage: 'QUEUED',
+            id: evt.frameId,
             nodeId: null,
             pct: 0,
+            priority: evt.priority ?? false,
+            stage: 'QUEUED',
         };
         return {
             ...state,

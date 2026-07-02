@@ -3,27 +3,27 @@
 import type { DirectorAction, DirectorCtx, DirectorEffect, DirectorState } from './types.js';
 
 interface Reduced {
-    state: DirectorState;
     effects: DirectorEffect[];
+    state: DirectorState;
 }
 
 function seed(state: DirectorState, ctx: DirectorCtx): Reduced {
     return {
-        state: { ...state, phase: 'running' },
         effects: [{ type: 'seed', count: ctx.batchSize }],
+        state: { ...state, phase: 'running' },
     };
 }
 
 function reset(state: DirectorState): Reduced {
     return {
-        state: { ...state, phase: 'seeding', cycle: state.cycle + 1 },
         effects: [{ type: 'resetQueue' }],
+        state: { ...state, phase: 'seeding', cycle: state.cycle + 1 },
     };
 }
 
 function run(state: DirectorState, ctx: DirectorCtx): Reduced {
     if (ctx.remaining === 0) {
-        return { state: { ...state, phase: 'complete' }, effects: [] };
+        return { effects: [], state: { ...state, phase: 'complete' } };
     }
     const effects: DirectorEffect[] = [];
     if (ctx.queueDepth >= ctx.scaleUpDepth && state.nodeCount < ctx.maxNodes) {
@@ -31,7 +31,7 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
     } else if (ctx.queueDepth <= ctx.scaleDownDepth && state.nodeCount > ctx.minNodes) {
         effects.push({ type: 'kill', strategy: 'idle' });
     }
-    return { state, effects };
+    return { effects, state };
 }
 
 export function reduceDirector(
@@ -39,10 +39,10 @@ export function reduceDirector(
     action: DirectorAction,
     ctx: DirectorCtx,
 ): Reduced {
-    if (action.type === 'pause') return { state: { ...state, phase: 'paused' }, effects: [] };
-    if (action.type === 'resume') return { state: { ...state, phase: 'running' }, effects: [] };
+    if (action.type === 'pause') return { effects: [], state: { ...state, phase: 'paused' } };
+    if (action.type === 'resume') return { effects: [], state: { ...state, phase: 'running' } };
     if (action.type === 'reset') return reset(state);
-    if (state.phase === 'paused') return { state, effects: [] };
+    if (state.phase === 'paused') return { effects: [], state };
     if (state.phase === 'seeding') return seed(state, ctx);
     if (state.phase === 'complete') return reset(state);
     return run(state, ctx);

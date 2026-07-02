@@ -17,14 +17,14 @@ let completed = 0;
 
 function publishIdle(): void {
     const msg: TelemetryMsg = {
-        nodeId,
-        pid: process.pid,
-        state: 'idle',
-        frameId: null,
-        stage: null,
-        pct: 0,
         completed,
+        frameId: null,
+        nodeId,
+        pct: 0,
+        pid: process.pid,
         priority: false,
+        stage: null,
+        state: 'idle',
     };
     void publisher.publish(TELEMETRY_CHANNEL, JSON.stringify(msg));
 }

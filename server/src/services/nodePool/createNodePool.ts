@@ -11,12 +11,12 @@ export interface NodePoolDeps {
 }
 
 export interface NodePool {
-    spawn: () => string;
-    killIdle: (idleIds: string[]) => string | null;
     crashRandom: (busyIds: string[]) => string | null;
-    size: () => number;
     ids: () => string[];
+    killIdle: (idleIds: string[]) => string | null;
     shutdown: () => void;
+    size: () => number;
+    spawn: () => string;
 }
 
 function wasCrash(code: number | null, signal: NodeJS.Signals | null): boolean {
@@ -40,12 +40,12 @@ export function createNodePool(deps: NodePoolDeps): NodePool {
             execArgv: ['--import', 'tsx'],
             env: {
                 ...process.env,
+                LOCK_DURATION_MS: String(TUNABLES.lockDurationMs),
+                MAX_STALLED_COUNT: String(TUNABLES.maxStalledCount),
                 NODE_ID: nodeId,
                 REDIS_URL: TUNABLES.redisUrl,
                 STAGE_MS: String(TUNABLES.stageMs),
-                LOCK_DURATION_MS: String(TUNABLES.lockDurationMs),
                 STALLED_INTERVAL_MS: String(TUNABLES.stalledIntervalMs),
-                MAX_STALLED_COUNT: String(TUNABLES.maxStalledCount),
             },
         });
         children.set(nodeId, child);

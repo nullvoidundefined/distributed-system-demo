@@ -6,55 +6,55 @@ export type Stage = (typeof STAGES)[number];
 export type EventLevel = (typeof EVENT_LEVELS)[number];
 export type CommandType = (typeof COMMAND_TYPES)[number];
 
-export interface Frame {
-    id: string;
-    cycle: number;
-    priority: boolean;
-    stage: Stage;
-    nodeId: string | null;
-    pct: number;
-}
-
 export type NodeState = 'idle' | 'rendering' | 'compositing' | 'spawning' | 'crashed';
 
-export interface WorkerNode {
+export interface Command {
+    count?: number;
+    nodeId?: string;
+    type: CommandType;
+}
+
+export interface Frame {
+    cycle: number;
     id: string;
-    pid: number;
-    state: NodeState;
-    frameId: string | null;
+    nodeId: string | null;
     pct: number;
-    completed: number;
+    priority: boolean;
+    stage: Stage;
 }
 
 export interface LogEvent {
     id: number;
-    ts: number;
     level: EventLevel;
     message: string;
+    ts: number;
+}
+
+export interface TelemetryMsg {
+    completed: number;
+    frameId: string | null;
+    nodeId: string;
+    pct: number;
+    pid: number;
+    priority: boolean;
+    stage: Stage | null;
+    state: NodeState;
+}
+
+export interface WorkerNode {
+    completed: number;
+    frameId: string | null;
+    id: string;
+    pct: number;
+    pid: number;
+    state: NodeState;
 }
 
 export interface WorldState {
     cycle: number;
-    phase: 'seeding' | 'running' | 'complete' | 'paused';
+    events: LogEvent[];
     frames: Frame[];
     nodes: WorkerNode[];
-    events: LogEvent[];
-    totals: { total: number; done: number };
-}
-
-export interface Command {
-    type: CommandType;
-    count?: number;
-    nodeId?: string;
-}
-
-export interface TelemetryMsg {
-    nodeId: string;
-    pid: number;
-    state: NodeState;
-    frameId: string | null;
-    stage: Stage | null;
-    pct: number;
-    completed: number;
-    priority: boolean;
+    phase: 'seeding' | 'running' | 'complete' | 'paused';
+    totals: { done: number; total: number };
 }

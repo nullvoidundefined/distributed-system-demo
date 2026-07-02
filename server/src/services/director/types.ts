@@ -3,20 +3,20 @@
 export type DirectorPhase = 'seeding' | 'running' | 'complete' | 'paused';
 
 export interface DirectorState {
-    phase: DirectorPhase;
     cycle: number;
     nodeCount: number;
+    phase: DirectorPhase;
 }
 
 export interface DirectorCtx {
-    queueDepth: number;
     activeCount: number;
-    remaining: number;
-    minNodes: number;
-    maxNodes: number;
-    scaleUpDepth: number;
-    scaleDownDepth: number;
     batchSize: number;
+    maxNodes: number;
+    minNodes: number;
+    queueDepth: number;
+    remaining: number;
+    scaleDownDepth: number;
+    scaleUpDepth: number;
 }
 
 export type DirectorAction =
