@@ -28,7 +28,12 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
         return { effects: [], state: { ...state, phase: 'complete' } };
     }
     const effects: DirectorEffect[] = [];
-    if (ctx.queueDepth > ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
+    if (ctx.nodeCount < ctx.minNodes) {
+        // Replenish the floor after a crash or graceful retire drops the pool below the
+        // minimum; the crew is guaranteed regardless of queue depth. One spawn per tick
+        // converges back to MIN_NODES.
+        effects.push({ type: 'spawn' });
+    } else if (ctx.queueDepth > ctx.scaleUpDepth && ctx.nodeCount < ctx.maxNodes) {
         effects.push({ type: 'spawn' });
     } else if (ctx.queueDepth < ctx.scaleDownDepth && ctx.nodeCount > ctx.minNodes) {
         effects.push({ type: 'kill' });
