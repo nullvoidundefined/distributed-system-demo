@@ -14,8 +14,12 @@ export function applyTelemetry(state: WorldState, msg: TelemetryMsg): WorldState
         state: msg.state,
     };
     const nodes = upsertNode(state.nodes, node);
+    // DONE is terminal (set by the authoritative completed/failed lifecycle event).
+    // Telemetry is best-effort and unordered relative to lifecycle, so a frame's final
+    // progress message can arrive after its completion; it must never drag a DONE frame
+    // back into an in-flight stage.
     const frames = state.frames.map((frame) =>
-        frame.id === msg.frameId && msg.stage
+        frame.id === msg.frameId && msg.stage && frame.stage !== 'DONE'
             ? {
                   ...frame,
                   nodeId: msg.nodeId,

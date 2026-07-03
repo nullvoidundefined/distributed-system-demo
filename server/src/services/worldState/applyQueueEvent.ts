@@ -31,6 +31,12 @@ function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): 
 
 /** Both terminal outcomes land in DONE (so a cycle can always finish); failed keeps its own flag. */
 function markFrameDone(state: WorldState, frameId: string, failed: boolean): WorldState {
+    // DONE is terminal and each frame counts toward `done` exactly once. BullMQ delivers
+    // lifecycle events at least once, so a completed/failed event can repeat (false stall,
+    // retry); counting per event lets `done` overshoot `total`, driving the cycle's
+    // `total - done` completion gauge negative so it never resets. Ignore the duplicate.
+    const target = state.frames.find((frame) => frame.id === frameId);
+    if (!target || target.stage === 'DONE') return state;
     const frames = state.frames.map((frame) =>
         frame.id === frameId ? { ...frame, failed, pct: 100, stage: 'DONE' as const } : frame,
     );
