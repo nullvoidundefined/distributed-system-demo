@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Render Farm - System Design</title>
+<style>
+    :root {
+        --ink: #14161a;
+        --muted: #5b6270;
+        --line: #d9dde4;
+        --line-soft: #eceef2;
+        --accent: #2f5bd7;
+        --accent-soft: #eef2fd;
+        --render: #b45309;
+        --composite: #7c3aed;
+        --danger: #c0362c;
+        --danger-soft: #fbecea;
+        --success: #1a7f4b;
+        --warn: #a9740a;
+        --code-bg: #f6f7f9;
+        --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+        --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    @page {
+        size: A4;
+        margin: 18mm 16mm 20mm 16mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body {
+        font-family: var(--sans);
+        color: var(--ink);
+        font-size: 10.2pt;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    h1, h2, h3, h4 { line-height: 1.2; font-weight: 650; }
+
+    h2 {
+        font-size: 16pt;
+        margin: 30px 0 4px 0;
+        padding-bottom: 6px;
+        border-bottom: 2px solid var(--ink);
+        letter-spacing: -0.01em;
+    }
+    h2:first-of-type { margin-top: 0; }
+
+    h3 {
+        font-size: 12.5pt;
+        margin: 20px 0 6px 0;
+        color: var(--accent);
+    }
+
+    h4 {
+        font-size: 10.6pt;
+        margin: 14px 0 4px 0;
+        color: var(--ink);
+    }
+
+    p { margin: 6px 0; }
+
+    ul, ol { margin: 6px 0; padding-left: 20px; }
+    li { margin: 3px 0; }
+
+    code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        background: var(--code-bg);
+        border: 1px solid var(--line-soft);
+        border-radius: 3px;
+        padding: 0.5px 4px;
+    }
+
+    pre {
+        font-family: var(--mono);
+        font-size: 8.2pt;
+        line-height: 1.42;
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px 14px;
+        overflow: hidden;
+        white-space: pre;
+        margin: 10px 0;
+    }
+    pre code { background: none; border: none; padding: 0; font-size: 1em; }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 9pt;
+        margin: 10px 0;
+    }
+    th, td {
+        text-align: left;
+        padding: 5px 8px;
+        border-bottom: 1px solid var(--line-soft);
+        vertical-align: top;
+    }
+    th {
+        border-bottom: 1.5px solid var(--line);
+        font-weight: 650;
+        background: #fafbfc;
+    }
+    td code { font-size: 0.92em; }
+
+    /* Let prose flow to fill pages; protect only atomic blocks from splitting,
+       and keep headings attached to the content that follows them. */
+    .section { }
+    .pagebreak { }
+    h2, h3, h4 { break-after: avoid; page-break-after: avoid; }
+    .callout, pre, .two-col, .toc, tr, .lead { break-inside: avoid; page-break-inside: avoid; }
+    thead { display: table-header-group; }
+
+    /* Cover */
+    .cover {
+        height: 246mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        page-break-after: always;
+    }
+    .cover-top { padding-top: 30mm; }
+    .kicker {
+        font-family: var(--mono);
+        font-size: 9.5pt;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 18px;
+    }
+    .cover h1 {
+        font-size: 40pt;
+        letter-spacing: -0.02em;
+        margin: 0 0 10px 0;
+        line-height: 1.02;
+    }
+    .cover .subtitle {
+        font-size: 13pt;
+        color: var(--muted);
+        max-width: 150mm;
+        line-height: 1.45;
+        font-weight: 400;
+    }
+    .cover-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 26px;
+    }
+    .badge {
+        font-family: var(--mono);
+        font-size: 8.5pt;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 11px;
+        color: var(--ink);
+        background: #fff;
+    }
+    .cover-meta {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 9pt;
+        color: var(--muted);
+        font-family: var(--mono);
+    }
+
+    .lead {
+        font-size: 11pt;
+        color: var(--ink);
+        border-left: 3px solid var(--accent);
+        padding: 2px 0 2px 14px;
+        margin: 10px 0 16px 0;
+    }
+
+    .callout {
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--accent);
+        background: var(--accent-soft);
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 12px 0;
+        font-size: 9.6pt;
+        page-break-inside: avoid;
+    }
+    .callout.warn { border-left-color: var(--warn); background: #fdf6e8; }
+    .callout.danger { border-left-color: var(--danger); background: var(--danger-soft); }
+    .callout .tag {
+        font-family: var(--mono);
+        font-size: 8pt;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 3px;
+        color: var(--accent);
+    }
+    .callout.warn .tag { color: var(--warn); }
+    .callout.danger .tag { color: var(--danger); }
+
+    .pill {
+        font-family: var(--mono);
+        font-size: 7.6pt;
+        font-weight: 700;
+        padding: 1.5px 6px;
+        border-radius: 4px;
+        letter-spacing: 0.03em;
+        white-space: nowrap;
+    }
+    .pill.queued { background: #eef0f3; color: #414855; }
+    .pill.render { background: #fdf0dc; color: var(--render); }
+    .pill.composite { background: #f1e9fd; color: var(--composite); }
+    .pill.done { background: #e3f4ea; color: var(--success); }
+
+    .two-col { display: flex; gap: 18px; }
+    .two-col > div { flex: 1; }
+
+    .toc { font-size: 10pt; }
+    .toc ol { list-style: none; padding-left: 0; counter-reset: toc; }
+    .toc li {
+        counter-increment: toc;
+        display: flex;
+        align-items: baseline;
+        padding: 4px 0;
+        border-bottom: 1px dotted var(--line);
+    }
+    .toc li::before {
+        content: counter(toc, decimal-leading-zero);
+        font-family: var(--mono);
+        font-size: 8.5pt;
+        color: var(--accent);
+        margin-right: 12px;
+        min-width: 22px;
+    }
+    .toc .t { font-weight: 600; }
+    .toc .d { color: var(--muted); margin-left: 8px; font-weight: 400; font-size: 9pt; }
+
+    .foot {
+        font-size: 8pt;
+        color: var(--muted);
+        text-align: center;
+        border-top: 1px solid var(--line-soft);
+        margin-top: 26px;
+        padding-top: 8px;
+        font-family: var(--mono);
+    }
+    .num { font-family: var(--mono); }
+    strong { font-weight: 650; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+    <div class="cover-top">
+        <div class="kicker">System Design Document</div>
+        <h1>Render Farm</h1>
+        <div class="subtitle">A self-running distributed job-processing demo built on real Redis and real BullMQ, depicting a render farm where frames flow through a shared queue and are processed by worker nodes running as separate OS processes.</div>
+        <div class="cover-badges">
+            <span class="badge">Node 20+ / TypeScript</span>
+            <span class="badge">Express 5</span>
+            <span class="badge">BullMQ + Redis</span>
+            <span class="badge">Vite + React SPA</span>
+            <span class="badge">WebSocket transport</span>
+            <span class="badge">pnpm workspaces</span>
+        </div>
+    </div>
+    <div class="cover-meta">
+        <span>distributed-system-demo</span>
+        <span>Revision: 2026-07-03</span>
+    </div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="section">
+    <h2>Contents</h2>
+    <div class="toc">
+        <ol>
+            <li><span class="t">System Overview</span><span class="d">purpose, the four behaviors, design ethos</span></li>
+            <li><span class="t">Architecture &amp; Topology</span><span class="d">control plane, data plane, view, contract</span></li>
+            <li><span class="t">Process &amp; Deployment Model</span><span class="d">what runs, how many, which connections</span></li>
+            <li><span class="t">The Wire Contract</span><span class="d">shared types, constants, message shapes</span></li>
+            <li><span class="t">Two Channels of Truth</span><span class="d">QueueEvents vs telemetry, world-state merge</span></li>
+            <li><span class="t">The Director Cycle Engine</span><span class="d">pure reducer, effects, autonomous drama</span></li>
+            <li><span class="t">Worker Node Lifecycle</span><span class="d">spawn, process, heartbeat, exit</span></li>
+            <li><span class="t">Crash Recovery Deep Dive</span><span class="d">the headline mechanism and its timing</span></li>
+            <li><span class="t">Autoscaling &amp; Priorities</span><span class="d">queue-depth thresholds, overtaking</span></li>
+            <li><span class="t">Transport &amp; Frontend</span><span class="d">snapshot broadcast, four UI regions</span></li>
+            <li><span class="t">Configuration Reference</span><span class="d">every tunable and its role</span></li>
+            <li><span class="t">Failure Modes &amp; Testing</span><span class="d">edge cases, test strategy, invariants</span></li>
+        </ol>
+    </div>
+</div>
+
+<!-- ============ 1. OVERVIEW ============ -->
+<div class="pagebreak section">
+    <h2>1 &nbsp; System Overview</h2>
+    <p class="lead">The demo is a live, looping visualization of how a distributed job-processing system behaves under load, failure, and scaling pressure - using genuine infrastructure rather than a simulation of it.</p>
+
+    <p>Frames (the unit of work, standing in for a rendered image) enter a shared BullMQ queue and are pulled by worker nodes. Each worker is a real forked OS process with its own Redis connection and its own BullMQ <code>Worker</code>. The system runs on an accelerated clock: a cycle seeds a batch of frames into an empty board, drains every frame to completion, holds a brief "complete" beat, resets, and repeats forever. On a 5 to 10 second cadence an autonomous Director injects scripted drama - crashing a node, forking a new one, retiring an idle one - so an observer always has something to watch.</p>
+
+    <p>The work itself is simulated (timed delays in two stages), but everything that makes the behavior <em>distributed</em> is real: the queue is real, the inter-process boundary is real, a crash is a real <code>SIGKILL</code>, and recovery is real BullMQ stalled-job detection.</p>
+
+    <h3>The four behaviors it demonstrates</h3>
+    <table>
+        <thead><tr><th style="width:20%">Behavior</th><th style="width:44%">How it actually works</th><th style="width:36%">Where you see it on screen</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>Load balancing</strong></td>
+                <td>A single shared BullMQ queue. Whichever worker is idle pulls the next frame; there is no assignment logic and no faking.</td>
+                <td>Frames spread themselves across the node strip and the Kanban board's in-flight columns.</td>
+            </tr>
+            <tr>
+                <td><strong>Fault tolerance</strong></td>
+                <td>A crash is a real <code>SIGKILL</code> of a worker child mid-frame. Its Redis lock expires, and BullMQ's stalled-job detection re-queues the orphaned frame to a surviving worker.</td>
+                <td>A node card goes red, its frame slides back to <span class="pill queued">QUEUED</span>, then completes elsewhere. The log narrates the crash and the re-queue.</td>
+            </tr>
+            <tr>
+                <td><strong>Autoscaling</strong></td>
+                <td>The Director watches queue depth. A deep backlog forks a new worker process; a draining queue gracefully retires an idle one.</td>
+                <td>Node cards appear and disappear in the strip. The log records <em>autoscaling up</em> and <em>autoscaling down</em>.</td>
+            </tr>
+            <tr>
+                <td><strong>Job priorities</strong></td>
+                <td>A fraction of frames are enqueued with BullMQ <code>priority</code> and overtake normal frames still waiting in the queue.</td>
+                <td>Purple-badged <span class="pill composite">PRIORITY</span> cards jump toward the front of the <span class="pill queued">QUEUED</span> column.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Design ethos</h3>
+    <ul>
+        <li><strong>Authenticity over illusion.</strong> The project deliberately pays the cost of real processes and a real message broker so that the emergent behavior - load spreading, recovery latency, backlog-driven scaling - is a property of the system rather than a script. The only thing faked is the render work itself, which is timed sleep in two stages.</li>
+        <li><strong>One command path for autonomous and manual actions.</strong> The operator controls (inject, kill, pause, reset) feed the exact same effect-application code the Director uses on its own ticks, so there is a single tested path per action rather than a parallel manual implementation.</li>
+        <li><strong>A pure decision core with an impure driver.</strong> Every scheduling decision lives in a pure reducer that takes state plus an observed snapshot and returns the next state plus a list of effects. All side effects (forking, killing, enqueueing, logging) are applied outside that function, which keeps the entire cycle engine unit-testable without Redis.</li>
+        <li><strong>Full-snapshot transport.</strong> At demo scale (at most roughly twenty frames and six nodes) a complete world snapshot is small, so the server broadcasts the whole state at 5 Hz instead of computing diffs. Every message then doubles as late-join state for a browser that connects mid-cycle.</li>
+    </ul>
+</div>
+
+<!-- ============ 2. ARCHITECTURE ============ -->
+<div class="pagebreak section">
+    <h2>2 &nbsp; Architecture &amp; Topology</h2>
+    <p class="lead">Four workspaces map onto three planes plus a shared contract: a control plane that decides and aggregates, a data plane that does the work, a view that only renders, and a package of types all three speak.</p>
+
+<pre><code>              +===================================================+
+              |   Redis  -  BullMQ queue "render-frames"          |
+              |            + pub/sub channel "worker:telemetry"    |
+              +====^=========================^=========^==========+
+                   | QueueEvents             | pub/sub | queue ops
+                   | (lifecycle)             | (nodes) | (add/obliterate)
+       +===========+=========================+=========+===========+
+       |  ORCHESTRATOR  (server/, Express)  -  CONTROL PLANE        |
+       |    - owns the BullMQ Queue of render frames                |
+       |    - Director: autonomous cycle engine (pure reducer)      |
+       |    - node pool: fork() and SIGKILL worker children         |
+       |    - merges QueueEvents + telemetry into one WorldState    |
+       |    - broadcasts WorldState over WebSocket at ~5 Hz         |
+       +==^===============^===============^==================+======+
+          | fork()        | fork()        | fork()           | WebSocket
+     +====+====+     +====+====+     +====+====+       +=====+========+
+     | worker  |     | worker  |  .. | worker  |       |  Vite+React   |
+     | child   |     | child   |     | child   |       |  SPA  (view)  |
+     | (pid)   |     | (pid)   |     | (pid)   |       |  read-only    |
+     +====+====+     +====+====+     +====+====+       +===============+
+          |               |               |
+          +---- each = own BullMQ Worker + own Redis connection ----+
+          |    DATA PLANE: pulls a frame, runs RENDERING then       |
+          |    COMPOSITING, publishes telemetry over pub/sub        |
+          +--------------------------------------------------------+</code></pre>
+
+    <h3>The four workspaces</h3>
+    <table>
+        <thead><tr><th style="width:16%">Workspace</th><th style="width:16%">Plane</th><th>Responsibility</th></tr></thead>
+        <tbody>
+            <tr><td><code>server/</code></td><td>Control plane</td><td>Owns the queue, runs the Director, manages the worker pool, subscribes to both truth channels, aggregates <code>WorldState</code>, and serves the UI over WebSocket. This is the only process that forks workers and the only one that mutates the queue.</td></tr>
+            <tr><td><code>worker/</code></td><td>Data plane</td><td>Each node is an independently forked Node process running a BullMQ <code>Worker</code> at concurrency 1. It runs a frame through the render then composite stages and publishes fine-grained node status and progress over the telemetry channel. It never talks to the browser and never touches the WebSocket.</td></tr>
+            <tr><td><code>web/</code></td><td>View</td><td>A Vite and React single-page app. It never touches Redis and holds no business logic; it renders whatever <code>WorldState</code> snapshot it last received and sends operator commands back over the same socket.</td></tr>
+            <tr><td><code>shared/</code></td><td>Contract</td><td>The <code>@demo/shared</code> package: the queue name, stage names, telemetry channel, event levels, command types, and every wire type. All three runtime workspaces depend on it, so the contract cannot drift between them.</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Dependency direction</h3>
+    <p>Dependencies flow strictly one way. The control plane depends on <code>@demo/shared</code> and drives Redis and the worker pool; workers depend on <code>@demo/shared</code> and Redis only; the view depends on <code>@demo/shared</code> and the WebSocket only. No workspace reaches sideways into another's source - the shared contract is the single seam between them, which is what lets a worker be launched as a genuinely separate process without importing any orchestrator code.</p>
+</div>
+
+<!-- ============ 3. PROCESS MODEL ============ -->
+<div class="pagebreak section">
+    <h2>3 &nbsp; Process &amp; Deployment Model</h2>
+    <p class="lead">At steady state the machine runs one orchestrator process, one Vite dev server, a Redis server, and between two and six worker child processes - each worker forked by the orchestrator, not by a supervisor or container runtime.</p>
+
+    <h3>What runs, and how it is launched</h3>
+    <ul>
+        <li><strong>Redis</strong> on <code>localhost:6379</code>, started either natively (<code>npm run redis:start</code>, the path used here) or via <code>docker compose up -d</code> (<code>redis:7-alpine</code>). It hosts both the BullMQ queue data structures and the pub/sub telemetry channel; there is no other datastore and no persistence beyond Redis.</li>
+        <li><strong>The orchestrator</strong> (<code>server/src/index.ts</code>) binds Express plus a <code>ws</code> WebSocket server on port <code>3001</code>, opens three separate Redis connections (one for the queue, one for <code>QueueEvents</code>, one for the telemetry subscription), spawns the initial <code>MIN_NODES</code> workers, and starts the Director's randomized tick loop.</li>
+        <li><strong>Worker children</strong> are created with Node's <code>fork()</code> pointing at <code>worker/src/index.ts</code>, launched under <code>tsx</code> via <code>execArgv: ['--import', 'tsx']</code>. The pool injects each child's identity and timing knobs through environment variables (<code>NODE_ID</code>, <code>REDIS_URL</code>, <code>STAGE_MS</code>, <code>LOCK_DURATION_MS</code>, <code>STALLED_INTERVAL_MS</code>, <code>MAX_STALLED_COUNT</code>, <code>HEARTBEAT_INTERVAL_MS</code>). Each child opens two Redis connections of its own: one for the BullMQ worker (<code>maxRetriesPerRequest: null</code>, as BullMQ requires) and one dedicated publisher for telemetry.</li>
+        <li><strong>The web SPA</strong> is served by Vite on port <code>5173</code> and connects outward to the orchestrator's WebSocket. Nothing in the browser tier is privileged; closing it has no effect on the running cycle.</li>
+    </ul>
+
+    <div class="callout">
+        <span class="tag">Connection budget</span>
+        The orchestrator holds three Redis connections; every worker holds two. A cycle running at the ceiling of six workers therefore has roughly <span class="num">3 + (6 x 2) = 15</span> live Redis connections. This is deliberate: BullMQ's blocking commands and pub/sub each need their own connection, and sharing them across concerns would serialize unrelated traffic.
+    </div>
+
+    <h3>Node identity and the pool counter</h3>
+    <p>The node pool assigns ids from a monotonic counter: <code>node-1</code>, <code>node-2</code>, and so on. The counter never resets within a process lifetime, so a retired or crashed <code>node-3</code> is never reused; the next spawn is always a fresh higher number. This makes the event log unambiguous - every id refers to exactly one process that ever existed - at the cost of ids climbing over a long-running demo.</p>
+
+    <h3>Lifecycle boundaries</h3>
+    <ul>
+        <li><strong>Graceful retirement</strong> sends <code>SIGTERM</code>. The worker clears its heartbeat, closes its BullMQ worker cleanly, and exits 0. The pool's exit handler treats a clean exit as "not a crash" and removes the node from the world immediately.</li>
+        <li><strong>Hard crash</strong> sends <code>SIGKILL</code>. There is no cleanup; the process dies mid-frame with its Redis lock still held. The exit handler treats a signal kill (or any nonzero exit) as a crash, marks the node <span class="pill" style="background:var(--danger-soft);color:var(--danger)">crashed</span>, lets it linger on screen for <code>1500 ms</code> so the failure is visible, then removes it.</li>
+        <li><strong>Orchestrator shutdown</strong> (<code>SIGTERM</code> / <code>SIGINT</code>) stops the Director timer, <code>SIGKILL</code>s every worker child, and closes the queue, the queue-events listener, and all three Redis connections before exiting.</li>
+    </ul>
+</div>
+
+<!-- ============ 4. WIRE CONTRACT ============ -->
+<div class="pagebreak section">
+    <h2>4 &nbsp; The Wire Contract</h2>
+    <p class="lead">The <code>@demo/shared</code> package is the single source of truth for every value and shape that crosses a process boundary. Because all three runtimes import it, a change to the contract is a compile-time event everywhere at once.</p>
+
+    <h3>Constants</h3>
+    <table>
+        <thead><tr><th style="width:26%">Constant</th><th style="width:30%">Value</th><th>Meaning</th></tr></thead>
+        <tbody>
+            <tr><td><code>QUEUE_NAME</code></td><td><code>"render-frames"</code></td><td>The one BullMQ queue every worker binds to.</td></tr>
+            <tr><td><code>TELEMETRY_CHANNEL</code></td><td><code>"worker:telemetry"</code></td><td>The Redis pub/sub channel workers publish to and the orchestrator subscribes to.</td></tr>
+            <tr><td><code>STAGES</code></td><td><code>QUEUED, RENDERING, COMPOSITING, DONE</code></td><td>The ordered Kanban columns; also a frame's <code>stage</code> field.</td></tr>
+            <tr><td><code>EVENT_LEVELS</code></td><td><code>info, success, warn, danger</code></td><td>Severity of an event-log line, which drives its color.</td></tr>
+            <tr><td><code>COMMAND_TYPES</code></td><td><code>pause, resume, inject, killNode, reset</code></td><td>The operator commands the browser may send.</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Core types</h3>
+    <div class="two-col">
+        <div>
+            <h4>Frame - the unit of work</h4>
+<pre><code>interface Frame {
+  id: string;      // "f&lt;cycle&gt;-&lt;seq&gt;"
+  cycle: number;
+  stage: Stage;    // QUEUED..DONE
+  nodeId: string | null;
+  pct: number;     // 0..100
+  priority: boolean;
+  failed: boolean; // exhausted retries
+}</code></pre>
+            <h4>WorkerNode - a live process</h4>
+<pre><code>interface WorkerNode {
+  id: string;      // "node-N"
+  pid: number;
+  state: NodeState;
+  frameId: string | null;
+  pct: number;
+  completed: number;
+}</code></pre>
+        </div>
+        <div>
+            <h4>TelemetryMsg - worker to orchestrator</h4>
+<pre><code>interface TelemetryMsg {
+  nodeId: string;
+  pid: number;
+  state: NodeState;
+  frameId: string | null;
+  stage: Stage | null;
+  pct: number;
+  priority: boolean;
+  completed: number;
+}</code></pre>
+            <h4>WorldState - the broadcast snapshot</h4>
+<pre><code>interface WorldState {
+  cycle: number;
+  phase: 'seeding' | 'running'
+       | 'complete' | 'paused';
+  frames: Frame[];
+  nodes: WorkerNode[];
+  events: LogEvent[];
+  totals: { done; total };
+}</code></pre>
+        </div>
+    </div>
+
+    <p><strong>Node states</strong> form the visual vocabulary of the node strip: <code>idle</code>, <code>rendering</code>, <code>compositing</code>, <code>spawning</code>, and <code>crashed</code>. The first four come from telemetry the worker publishes about itself; <code>crashed</code> is applied by the orchestrator when a child exits unexpectedly, because a killed process cannot announce its own death.</p>
+
+    <div class="callout">
+        <span class="tag">Frame identity is queue identity</span>
+        A frame's <code>id</code> is used directly as the BullMQ <code>jobId</code>. That single decision is what lets a lifecycle event (which carries only a <code>jobId</code>) be folded straight into the matching frame with no side lookup table - the job and the frame are the same entity under two names.
+    </div>
+</div>
+
+<!-- ============ 5. TWO CHANNELS ============ -->
+<div class="pagebreak section">
+    <h2>5 &nbsp; Two Channels of Truth</h2>
+    <p class="lead">The orchestrator reconciles two independent event streams into one coherent world: BullMQ's queue lifecycle for <em>where a frame is</em>, and a pub/sub telemetry channel for <em>what each node is doing</em>. Each answers a question the other cannot answer cheaply.</p>
+
+    <h3>Why two channels rather than one</h3>
+    <p>BullMQ's <code>QueueEvents</code> is authoritative for job lifecycle: a frame was added, completed, stalled, or failed. It is reliable and it is the same signal that drives real recovery. But it does not cheaply tell you which node currently owns a frame, what stage that frame is in, or how far along it is. That fine-grained, high-frequency detail rides a dedicated Redis pub/sub channel instead, where a lost message simply means one slightly stale progress bar rather than a lost state transition.</p>
+
+    <table>
+        <thead><tr><th style="width:26%">Channel</th><th style="width:37%">Carries</th><th>Folded by</th></tr></thead>
+        <tbody>
+            <tr><td><strong>QueueEvents</strong><br><span style="color:var(--muted);font-size:8.5pt">authoritative, low-frequency</span></td><td><code>added</code> creates a QUEUED frame and bumps the total; <code>completed</code> and <code>failed</code> both move it to DONE (failed keeps a flag); <code>stalled</code> re-queues it back to QUEUED with no owner.</td><td><code>applyQueueEvent</code> - moves a frame between stages and updates <code>totals</code>.</td></tr>
+            <tr><td><strong>worker:telemetry</strong><br><span style="color:var(--muted);font-size:8.5pt">best-effort, high-frequency</span></td><td>Per-node state, the frame it owns, current stage, live percent, per-node completed count, and idle heartbeats.</td><td><code>applyTelemetry</code> - upserts the node and, if it owns a frame, syncs that frame's stage, owner, and percent.</td></tr>
+        </tbody>
+    </table>
+
+    <h3>The merge and the throttle</h3>
+    <p>Both folds write into a single in-memory <code>WorldStore</code>. The store is a plain reducer over immutable snapshots: every handler takes the current <code>WorldState</code> and returns a new one, so there is no shared mutable state to guard. A separate broadcaster reads the latest snapshot on a fixed timer and pushes it to every open socket at <code>BROADCAST_HZ</code> (5 Hz by default), decoupling the write rate of the two noisy input channels from the send rate to browsers. A newly connected browser is sent a full snapshot immediately on connect, so opening the page mid-cycle shows correct state at once.</p>
+
+<pre><code>QueueEvents ──"added/completed/stalled/failed"──►  applyQueueEvent ─┐
+                                                                    ├─►  WorldStore  ──5 Hz──►  every WebSocket client
+worker:telemetry ──"state/stage/pct/heartbeat"──►  applyTelemetry ──┘   (immutable      (full snapshot;
+                                                                        snapshots)       also late-join state)</code></pre>
+
+    <div class="callout warn">
+        <span class="tag">Ordering &amp; reconciliation</span>
+        The two channels are not ordered relative to each other. Telemetry may report a node "rendering frame f2-7" a beat before or after the <code>active</code> lifecycle transition. The merge is written to tolerate this: <code>applyTelemetry</code> only syncs a frame it can find and that reports a stage, and a <code>stalled</code> event unconditionally resets ownership - so a late telemetry straggler for an orphaned frame cannot pin it to a dead node.
+    </div>
+</div>
+
+<!-- ============ 6. DIRECTOR ============ -->
+<div class="pagebreak section">
+    <h2>6 &nbsp; The Director Cycle Engine</h2>
+    <p class="lead">The Director is the autonomous brain. It is split cleanly into a pure reducer that decides what should happen and an impure driver that makes it happen - the same split that makes the whole engine testable without touching Redis or forking a process.</p>
+
+    <h3>The cycle as a state machine</h3>
+    <p>A cycle is one batch of frames from an empty board to all-complete. The Director walks a small phase machine, advanced by a timer that fires at a random interval between <code>TICK_MIN_MS</code> and <code>TICK_MAX_MS</code>:</p>
+<pre><code>  SEED ────────►  RUNNING ────────►  COMPLETE ────────►  RESET ──┐
+  enqueue a       workers pull        queue empty         obliterate │
+  batch of        frames; the         AND every frame     the queue, │
+  BATCH_SIZE      Director injects     is DONE; hold a     bump cycle,│
+  frames, a few   drama each tick     brief beat          clear board│
+  high-priority                                                      │
+      ▲                                                              │
+      └──────────────────────────────────────────────────────────────┘
+                          repeats forever</code></pre>
+
+    <h3>The pure reducer</h3>
+    <p>Every decision is made by <code>reduceDirector(state, action, ctx)</code>, which returns the next state plus a list of effects and performs no side effects itself. Its inputs are the current phase, the incoming action (a tick, or a manual command), and an observed context snapshot - queue depth, active count, node count, the ids of busy nodes, and two random rolls injected from outside so the function stays deterministic under test.</p>
+
+    <table>
+        <thead><tr><th style="width:24%">In phase / action</th><th>The reducer decides</th></tr></thead>
+        <tbody>
+            <tr><td><code>seeding</code></td><td>Emit a single <code>seed</code> effect for <code>BATCH_SIZE</code> frames, then advance to <code>running</code>.</td></tr>
+            <tr><td><code>running</code>, work remains</td><td>Consider one scaling effect (spawn if backlog exceeds the up-threshold and below max nodes; kill if the queue drains below the down-threshold and above min nodes) and, independently, a probabilistic crash if more than one node is busy.</td></tr>
+            <tr><td><code>running</code>, nothing remains</td><td>Advance to <code>complete</code>.</td></tr>
+            <tr><td><code>complete</code></td><td>Emit <code>resetQueue</code>, increment the cycle number, return to <code>seeding</code>.</td></tr>
+            <tr><td><code>pause</code> / <code>resume</code></td><td>Flip the paused flag with no effects. While paused, a tick returns state unchanged and emits nothing.</td></tr>
+        </tbody>
+    </table>
+
+    <h3>The impure driver</h3>
+    <p><code>runDirector</code> owns everything the reducer refuses to touch. It builds the observed context by querying live BullMQ job counts and the current node list, calls the reducer, then applies each returned effect in order: <code>seed</code> enqueues frames (assigning each a <code>jobId</code>, a high or normal priority, and generous retry attempts), <code>spawn</code> forks a worker, <code>kill</code> retires an idle one, <code>crash</code> <code>SIGKILL</code>s a busy one, and <code>resetQueue</code> obliterates the queue and clears the board. It also owns the frame-id sequence and a small map remembering which ids were seeded high-priority, so the <code>added</code> lifecycle handler can recover a frame's priority.</p>
+
+    <div class="callout">
+        <span class="tag">Randomness lives at the edge</span>
+        The crash decision reads two random values (<code>crashRoll</code>, <code>targetRoll</code>) from the context, not from inside the reducer. A crash fires only when <code>crashRoll</code> falls under the per-tick probability of <span class="num">0.25</span> and more than one node is busy; the target is then chosen from the busy set. Injecting the rolls keeps the reducer pure and lets tests pin an exact crash or an exact no-crash by supplying the rolls directly.
+    </div>
+
+    <h3>Manual commands share the path</h3>
+    <p>Operator commands enter through the WebSocket and are routed to the same driver: pause, resume, and reset flow through <code>dispatch</code> into the reducer; inject calls the same <code>seed</code> the Director uses; kill calls a dedicated <code>killNodeNow</code>. Crucially, a manual kill works even while paused - pause freezes the Director's own drama, not the operator's hand - and it prefers a busy node but falls back to any node so the button is never a no-op.</p>
+</div>
+
+<!-- ============ 7. WORKER LIFECYCLE ============ -->
+<div class="pagebreak section">
+    <h2>7 &nbsp; Worker Node Lifecycle</h2>
+    <p class="lead">A worker is a small, single-purpose process: bind a BullMQ worker at concurrency one, run each frame through two timed stages while narrating progress, and announce itself when idle. It knows nothing about cycles, scaling, or the browser.</p>
+
+    <h3>The stage pipeline</h3>
+    <p>Each frame runs through two stages in strict order, <code>RENDERING</code> then <code>COMPOSITING</code>, each simulated as roughly <code>STAGE_MS</code> of work. During a stage the worker ramps a progress percent and publishes a telemetry snapshot as it climbs, so the browser's per-node progress bar and the frame's own percent advance smoothly. When both stages finish, BullMQ marks the job <code>completed</code>, the worker increments its per-node completed count, and it publishes an idle snapshot to signal it is ready for the next frame.</p>
+<pre><code>  pull frame ─►  RENDERING  ─────────►  COMPOSITING  ─────────►  completed
+  (concurrency   emit {stage,pct,        emit {stage,pct,         completed++,
+   = 1)          nodeId} as pct           nodeId} as pct          publish idle
+                 ramps 0..100             ramps 0..100</code></pre>
+
+    <h3>Heartbeat and idle presence</h3>
+    <p>An idle worker re-announces itself every <code>HEARTBEAT_INTERVAL_MS</code> on the telemetry channel. This matters because telemetry is best-effort: without a heartbeat, a worker that finished its last frame and is waiting for the next would silently vanish from the strip. While it is actively processing, the progress ticks already prove it is alive, so the heartbeat only fires when idle.</p>
+
+    <h3>Exit paths and how the orchestrator reads them</h3>
+    <table>
+        <thead><tr><th style="width:20%">Signal</th><th style="width:24%">Worker behavior</th><th>Orchestrator's exit handler</th></tr></thead>
+        <tbody>
+            <tr><td><code>SIGTERM</code><br><span style="color:var(--muted);font-size:8.5pt">graceful retire</span></td><td>Clears the heartbeat timer, closes the BullMQ worker (finishing or cleanly releasing its frame), exits 0.</td><td>Sees a clean exit, classifies it as "not a crash", and removes the node from the world immediately with no red state.</td></tr>
+            <tr><td><code>SIGKILL</code><br><span style="color:var(--muted);font-size:8.5pt">hard crash</span></td><td>Dies instantly. No cleanup. Its held frame lock is left to expire.</td><td>Classifies a signal kill (or any nonzero code) as a crash, marks the node <code>crashed</code>, logs it, lets the red card linger <code>1500 ms</code>, then removes it.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout danger">
+        <span class="tag">A crash is genuinely a crash</span>
+        The <code>Kill a node</code> control and the Director's random crash both send a real <code>SIGKILL</code> to a real OS process. There is no soft-crash shortcut in this codebase - the design spec kept one as a documented fallback, but real-kill recovery proved reliable on the accelerated clock and the fallback was never built. What you watch recover is authentic BullMQ stalled-job detection.
+    </div>
+</div>
+
+<!-- ============ 8. CRASH RECOVERY ============ -->
+<div class="pagebreak section">
+    <h2>8 &nbsp; Crash Recovery Deep Dive</h2>
+    <p class="lead">This is the headline mechanism and the one piece of timing tuned specifically for a watchable demo. A killed worker leaves an orphaned frame; BullMQ notices the abandoned lock and hands the frame to a survivor - and the whole round trip is engineered to complete inside a few seconds.</p>
+
+    <h3>The sequence, step by step</h3>
+    <table>
+        <thead><tr><th style="width:8%">t</th><th style="width:30%">Event</th><th>What is happening underneath</th></tr></thead>
+        <tbody>
+            <tr><td><code>0.0s</code></td><td>Worker is mid-frame, holding the job's Redis lock, renewing it as it works.</td><td>BullMQ maintains a lock with TTL <code>LOCK_DURATION_MS</code>, renewed while the processor runs.</td></tr>
+            <tr><td><code>0.0s</code></td><td><code>SIGKILL</code> arrives; the process dies instantly.</td><td>No cleanup runs. The lock is now held by a process that no longer exists and will not be renewed again.</td></tr>
+            <tr><td><code>~0s</code></td><td>Orchestrator's exit handler marks the node <code>crashed</code> and logs it.</td><td>Driven by the child <code>exit</code> event, independent of Redis. The frame's own recovery has not started yet.</td></tr>
+            <tr><td><code>~4s</code></td><td>The abandoned lock expires.</td><td>After <code>LOCK_DURATION_MS</code> (<span class="num">4000</span>) with no renewal, the job is eligible to be seen as stalled.</td></tr>
+            <tr><td><code>~4-6s</code></td><td>A surviving worker's stalled check finds the orphan and re-queues it.</td><td>Each worker runs a stalled sweep every <code>STALLED_INTERVAL_MS</code> (<span class="num">2000</span>). The next sweep after lock expiry emits <code>stalled</code>; the frame slides back to QUEUED.</td></tr>
+            <tr><td><code>~6s+</code></td><td>An idle worker pulls the re-queued frame and completes it.</td><td>Normal load balancing resumes. The frame finishes on a different node; the log shows the re-queue then the completion.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout">
+        <span class="tag">The recovery-window formula</span>
+        Worst-case recovery latency is bounded by <strong>LOCK_DURATION_MS + STALLED_INTERVAL_MS</strong> = <span class="num">4000 + 2000 = 6000 ms</span>, landing recovery inside a roughly 4 to 8 second window. BullMQ's stock defaults (a 30-second stalled interval) would push this past half a minute - far too slow to watch - which is exactly why these two knobs are tightened for the demo and validated by an integration test.
+    </div>
+
+    <h3>Retry headroom, so a crash never fails a frame</h3>
+    <p>Each frame is enqueued with <code>JOB_ATTEMPTS</code> (20) attempts and workers run with <code>MAX_STALLED_COUNT</code> (10). These are set deliberately high so that a frame crashed and re-queued several times still has plenty of headroom to succeed rather than being marked permanently failed. The generous budget is what makes a cascade of crashes recoverable instead of fatal.</p>
+
+    <h3>The deadlock-proof escape hatch</h3>
+    <p>A frame that somehow exhausts all its attempts (reachable only with the retry budget forced down, for example <code>MAX_STALLED_COUNT=0 JOB_ATTEMPTS=1</code>) does not vanish and does not wedge the cycle. BullMQ emits <code>failed</code>; the orchestrator still moves the frame into <code>DONE</code> but preserves a <code>failed</code> flag, which the board renders as a red-bordered <code>FAILED</code> card and the log records as <em>failed permanently</em>. Because a failed frame still counts as done, the "all frames complete" condition can always be reached and the cycle can never deadlock waiting on a frame that will never finish.</p>
+</div>
+
+<!-- ============ 9. AUTOSCALE & PRIORITIES ============ -->
+<div class="pagebreak section">
+    <h2>9 &nbsp; Autoscaling &amp; Priorities</h2>
+
+    <h3>Autoscaling on queue depth</h3>
+    <p class="lead">The Director scales the worker pool reactively from a single observed number - the queue depth, defined as waiting plus prioritized jobs - against two strict thresholds, clamped to a floor and ceiling.</p>
+    <ul>
+        <li><strong>Scale up</strong> forks one new worker when the queue depth strictly <em>exceeds</em> <code>SCALE_UP_DEPTH</code> (6) and the pool is below <code>MAX_NODES</code> (6). A deep backlog is thus met by more parallelism, one node per qualifying tick.</li>
+        <li><strong>Scale down</strong> gracefully retires one idle worker when the queue depth drops strictly <em>below</em> <code>SCALE_DOWN_DEPTH</code> (2) and the pool is above <code>MIN_NODES</code> (2). The pool only ever kills a node reporting <code>idle</code>, so scaling down never interrupts in-flight work.</li>
+        <li><strong>The comparisons are strict on purpose.</strong> "Exceeds" and "drains below" are exact boundary semantics pinned by unit tests, so a depth sitting exactly on a threshold does not oscillate the pool.</li>
+        <li><strong>At most one scaling action per tick.</strong> Up and down are mutually exclusive branches, so the pool moves by one node at a time and cannot thrash up and down within a single decision.</li>
+    </ul>
+
+<pre><code>  queueDepth = waiting + prioritized
+
+  depth &gt; 6  and nodes &lt; 6   ─►  spawn one worker      (autoscaling up)
+  depth &lt; 2  and nodes &gt; 2   ─►  retire one idle node  (autoscaling down)
+  otherwise                  ─►  hold steady</code></pre>
+
+    <h3>Priorities and overtaking</h3>
+    <p class="lead">A configurable fraction of seeded frames are flagged high-priority and enqueued so they jump ahead of normal frames still waiting - a real property of the shared queue, not a display trick.</p>
+    <ul>
+        <li><strong>Seeding assigns priority probabilistically.</strong> Each seeded frame is high-priority with probability <code>HIGH_PRIORITY_RATIO</code> (0.15), so a typical batch of sixteen carries two or three priority frames.</li>
+        <li><strong>Lower BullMQ number means higher priority.</strong> High-priority frames are enqueued with priority <code>1</code>, normal frames with priority <code>5</code>. When a worker frees up it pulls the lowest-numbered waiting job, so a priority frame overtakes normal frames that were queued before it.</li>
+        <li><strong>Priority is remembered for the lifecycle handler.</strong> The <code>added</code> event carries only a job id, so the driver keeps a small id-to-priority map from seed time; the handler reads it to render the incoming frame with the correct badge.</li>
+        <li><strong>Overtaking is visible, not instantaneous.</strong> A priority frame cannot preempt a frame already rendering (workers finish the frame they hold); it jumps the <em>waiting</em> line, so on screen it slides toward the front of QUEUED and enters processing ahead of its neighbors.</li>
+    </ul>
+</div>
+
+<!-- ============ 10. TRANSPORT & FRONTEND ============ -->
+<div class="pagebreak section">
+    <h2>10 &nbsp; Transport &amp; Frontend</h2>
+
+    <h3>Transport: full snapshots over one WebSocket</h3>
+    <p class="lead">A single bidirectional WebSocket carries world snapshots down to the browser and operator commands back up. The server never sends diffs - it sends the whole world, framed so every message is also valid late-join state.</p>
+    <ul>
+        <li><strong>Downstream:</strong> the broadcaster sends a full <code>{ type: 'snapshot', state }</code> immediately to each socket on connect, then re-sends the latest snapshot to all clients on a fixed timer at <code>BROADCAST_HZ</code> (5 Hz). A browser opening the page mid-cycle is correct on its first message.</li>
+        <li><strong>Upstream:</strong> the browser sends JSON commands (pause, resume, inject, killNode, reset) on the same socket. Malformed input is caught and ignored rather than allowed to crash the orchestrator, and unknown command types are dropped by the router.</li>
+        <li><strong>Resilience:</strong> the client reconnects on close with exponential backoff from <code>500 ms</code> up to a <code>8000 ms</code> ceiling, resetting the delay once a connection reopens, so a server restart heals without a page reload.</li>
+        <li><strong>Why snapshots win at this scale:</strong> with at most roughly twenty frames and six nodes a snapshot is a few kilobytes; diffing would add reconciliation complexity and a late-join code path for no bandwidth saving worth having.</li>
+    </ul>
+
+    <h3>The four UI regions</h3>
+    <p>The SPA is one page driven entirely by the last snapshot; it holds no derived business state of its own.</p>
+    <table>
+        <thead><tr><th style="width:22%">Region</th><th>What it renders from the snapshot</th></tr></thead>
+        <tbody>
+            <tr><td><strong>Kanban board</strong><br><span style="color:var(--muted);font-size:8.5pt">the primary graphic</span></td><td>One card per frame, placed in its <code>stage</code> column. Cards slide between columns on stage transitions, carry their owning node while in flight, wear a badge when high-priority, and turn red when failed. On a crash, orphaned cards slide back to QUEUED.</td></tr>
+            <tr><td><strong>Node strip</strong></td><td>One card per live process showing pid, state, current frame, a live progress bar, and a completed count. Cards appear and disappear as the pool scales; a crashed node flashes red before it is removed.</td></tr>
+            <tr><td><strong>Event log</strong></td><td>A scrolling, color-coded feed - the human-readable narration of what the graphics are doing, with severity mapped to color (info, success, warn, danger).</td></tr>
+            <tr><td><strong>Control bar</strong></td><td>The operator buttons (pause / resume, inject five, kill a node, reset), each sending a command on the shared socket.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout">
+        <span class="tag">Accessibility built in</span>
+        Motion respects <code>prefers-reduced-motion</code> - slide animations become instant state changes rather than merely shortened ones. The UI uses semantic HTML and native <code>&lt;button&gt;</code> controls, and targets WCAG AA contrast throughout, so the visualization is legible without relying on motion or color alone.
+    </div>
+</div>
+
+<!-- ============ 11. CONFIG ============ -->
+<div class="pagebreak section">
+    <h2>11 &nbsp; Configuration Reference</h2>
+    <p class="lead">Every timing and threshold knob lives in <code>server/src/config/tunables.ts</code> and is overridable by an environment variable of the same upper-snake name. The defaults are chosen for an accelerated, watchable clock rather than production realism.</p>
+
+    <table>
+        <thead><tr><th style="width:26%">Env var</th><th style="width:12%">Default</th><th>Role in the system</th></tr></thead>
+        <tbody>
+            <tr><td><code>BATCH_SIZE</code></td><td><code>16</code></td><td>Frames seeded at the start of every cycle.</td></tr>
+            <tr><td><code>HIGH_PRIORITY_RATIO</code></td><td><code>0.15</code></td><td>Probability each seeded frame is flagged high-priority.</td></tr>
+            <tr><td><code>TICK_MIN_MS</code> / <code>TICK_MAX_MS</code></td><td><code>5000 / 10000</code></td><td>Bounds of the randomized interval between Director drama ticks.</td></tr>
+            <tr><td><code>STAGE_MS</code></td><td><code>2500</code></td><td>Simulated work per stage; a frame spans two stages, so roughly 5s end to end.</td></tr>
+            <tr><td><code>MIN_NODES</code> / <code>MAX_NODES</code></td><td><code>2 / 6</code></td><td>Autoscale floor and ceiling; also the count spawned at startup (min).</td></tr>
+            <tr><td><code>SCALE_UP_DEPTH</code></td><td><code>6</code></td><td>Queue depth that must be strictly exceeded to fork a worker.</td></tr>
+            <tr><td><code>SCALE_DOWN_DEPTH</code></td><td><code>2</code></td><td>Queue depth the pool must strictly drain below to retire an idle worker.</td></tr>
+            <tr><td><code>LOCK_DURATION_MS</code></td><td><code>4000</code></td><td>Worker lock TTL; a crashed worker's frame becomes recoverable after this expires.</td></tr>
+            <tr><td><code>STALLED_INTERVAL_MS</code></td><td><code>2000</code></td><td>How often each worker sweeps for stalled (orphaned) jobs.</td></tr>
+            <tr><td><code>HEARTBEAT_INTERVAL_MS</code></td><td><code>2000</code></td><td>How often an idle worker re-announces itself on the telemetry channel.</td></tr>
+            <tr><td><code>JOB_ATTEMPTS</code></td><td><code>20</code></td><td>Retry attempts per frame; high so re-queued frames succeed rather than fail.</td></tr>
+            <tr><td><code>MAX_STALLED_COUNT</code></td><td><code>10</code></td><td>How many stalls a job tolerates before BullMQ fails it permanently.</td></tr>
+            <tr><td><code>BROADCAST_HZ</code></td><td><code>5</code></td><td>WorldState snapshot broadcast rate to all connected browsers.</td></tr>
+            <tr><td><code>PORT</code></td><td><code>3001</code></td><td>Orchestrator HTTP and WebSocket port.</td></tr>
+            <tr><td><code>REDIS_URL</code></td><td><code>redis://127.0.0.1:6379</code></td><td>Redis endpoint shared by orchestrator and every worker.</td></tr>
+        </tbody>
+    </table>
+
+    <div class="callout warn">
+        <span class="tag">The one coupled pair</span>
+        <code>LOCK_DURATION_MS</code> and <code>STALLED_INTERVAL_MS</code> are the only knobs that must be tuned together: their sum sets the crash-recovery window. Raising either widens the gap between a kill and its visible recovery; lowering them too far risks a worker's own lock being declared stalled mid-frame. The shipped pair (4000 + 2000) is the validated sweet spot for the accelerated clock.
+    </div>
+
+    <h3>Ports at a glance</h3>
+    <table>
+        <thead><tr><th style="width:30%">Service</th><th>Port</th></tr></thead>
+        <tbody>
+            <tr><td>Web SPA (Vite)</td><td><code>5173</code></td></tr>
+            <tr><td>Orchestrator HTTP + WebSocket</td><td><code>3001</code></td></tr>
+            <tr><td>Redis</td><td><code>6379</code></td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- ============ 12. FAILURE & TESTING ============ -->
+<div class="pagebreak section">
+    <h2>12 &nbsp; Failure Modes &amp; Testing</h2>
+
+    <h3>Invariants the system holds</h3>
+    <ul>
+        <li><strong>A cycle always terminates.</strong> Because every terminal outcome - completed or permanently failed - lands a frame in DONE and counts toward the total, the "all frames done" condition is always reachable and no cycle can wedge on a frame that will never finish.</li>
+        <li><strong>The queue has a single owner.</strong> Only the orchestrator adds, obliterates, or inspects the queue; workers only pull. This keeps queue mutation in one place and out of the racing data plane.</li>
+        <li><strong>Node ids are unique for all time.</strong> The monotonic pool counter guarantees a crashed or retired id is never reused, so every log line names exactly one process.</li>
+        <li><strong>The view cannot corrupt state.</strong> The browser is strictly downstream of the world store and upstream only through validated commands; malformed input is dropped, not applied.</li>
+    </ul>
+
+    <h3>Known edge cases and how they are handled</h3>
+    <table>
+        <thead><tr><th style="width:34%">Situation</th><th>Handling</th></tr></thead>
+        <tbody>
+            <tr><td>A worker killed while idle (scale-down race).</td><td>The pool only targets nodes reporting <code>idle</code> for graceful retire; a busy node is never chosen for scale-down.</td></tr>
+            <tr><td>A crash while only one node is busy.</td><td>The Director's crash guard requires more than one busy node, so it never orphans work that no survivor could pick up.</td></tr>
+            <tr><td>Kill pressed while paused.</td><td>Deliberately still fires - pause freezes autonomous drama, not the operator - and falls back to any node if none are busy.</td></tr>
+            <tr><td>A late telemetry message for a re-queued frame.</td><td>The <code>stalled</code> fold resets frame ownership, and telemetry only syncs a frame that still reports a stage, so a straggler cannot re-pin an orphan to a dead node.</td></tr>
+            <tr><td>Browser connects mid-cycle.</td><td>Served a full snapshot on connect, so first paint is correct.</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Test strategy</h3>
+    <p>The engine's decisions are pure functions, so they are covered without Redis, and the genuinely distributed behavior is covered against real Redis and real BullMQ.</p>
+    <ul>
+        <li><strong>Unit (no Redis):</strong> the Director reducer - phase transitions, pause-gated crash selection, and the exact strict autoscale boundaries - plus the world-state merge folds, the worker's two-stage ordering and full progress ramp, and the WebSocket command router.</li>
+        <li><strong>Integration (real Redis, run sequentially because the files share one queue):</strong> the headline <code>SIGKILL</code> case asserts a frame stalls, re-queues, and is completed by the <em>surviving</em> worker; plus plain lifecycle (added to active to completed), priority overtaking, load balancing across two workers, the idle heartbeat, and graceful <code>SIGTERM</code> shutdown.</li>
+        <li><strong>Web (jsdom):</strong> column-stage mapping, priority ordering and badge, node tags and strip fields, event-log severity coloring, and control-bar command dispatch.</li>
+    </ul>
+
+    <div class="callout danger">
+        <span class="tag">Test / demo share one Redis</span>
+        The running demo and the server integration tests use the same Redis queue, and the tests flush Redis. Stop <code>npm run dev</code> before running server integration tests, or a live demo will steal test jobs and the tests will wipe the demo's state out from under it.
+    </div>
+
+    <div class="foot">Render Farm - Distributed System Demo &nbsp;.&nbsp; System Design Document &nbsp;.&nbsp; Revision 2026-07-03</div>
+</div>
+
+</body>
+</html>
