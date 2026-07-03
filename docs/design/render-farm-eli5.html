@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Render Farm - Explain It Like I'm Five</title>
+<style>
+    :root {
+        --ink: #1c1a17;
+        --muted: #6b6459;
+        --line: #e3ddd2;
+        --line-soft: #efe9de;
+        --accent: #c2571e;      /* warm orange */
+        --accent-soft: #fbeee2;
+        --teal: #17756b;
+        --teal-soft: #e2f2ef;
+        --purple: #6d4aad;
+        --danger: #b4362b;
+        --danger-soft: #fbe9e6;
+        --success: #2c7a4b;
+        --paper: #fffdf9;
+        --code-bg: #f4efe6;
+        --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+        --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    @page { size: A4; margin: 18mm 18mm 20mm 18mm; }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+        font-family: var(--sans);
+        color: var(--ink);
+        background: var(--paper);
+        font-size: 11.2pt;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    h1, h2, h3 { line-height: 1.18; font-weight: 700; }
+    h2 {
+        font-size: 19pt;
+        margin: 34px 0 4px 0;
+        letter-spacing: -0.015em;
+    }
+    h2:first-of-type { margin-top: 0; }
+    h2 .n {
+        font-family: var(--mono);
+        font-size: 11pt;
+        color: var(--accent);
+        font-weight: 700;
+        display: inline-block;
+        margin-right: 8px;
+    }
+    h2 + .rule { height: 3px; background: var(--accent); width: 54px; border-radius: 3px; margin: 6px 0 14px; }
+    h3 { font-size: 13pt; margin: 20px 0 4px 0; color: var(--teal); }
+
+    p { margin: 9px 0; }
+    strong { font-weight: 650; }
+    em { font-style: italic; }
+
+    ul { margin: 9px 0; padding-left: 22px; }
+    li { margin: 7px 0; }
+
+    code {
+        font-family: var(--mono);
+        font-size: 0.84em;
+        background: var(--code-bg);
+        border-radius: 3px;
+        padding: 1px 4px;
+    }
+
+    .analogy {
+        background: var(--accent-soft);
+        border: 1px solid #f0d8c2;
+        border-left: 5px solid var(--accent);
+        border-radius: 9px;
+        padding: 12px 16px;
+        margin: 14px 0;
+        page-break-inside: avoid;
+    }
+    .analogy .tag, .real .tag, .note .tag {
+        font-family: var(--mono);
+        font-size: 8.5pt;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-weight: 700;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .analogy .tag { color: var(--accent); }
+    .analogy p:last-child, .real p:last-child, .note p:last-child { margin-bottom: 0; }
+    .analogy p:first-of-type { margin-top: 2px; }
+
+    .real {
+        background: var(--teal-soft);
+        border: 1px solid #c9e5e0;
+        border-left: 5px solid var(--teal);
+        border-radius: 9px;
+        padding: 12px 16px;
+        margin: 14px 0;
+        page-break-inside: avoid;
+    }
+    .real .tag { color: var(--teal); }
+
+    .note {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        padding: 12px 16px;
+        margin: 14px 0;
+        page-break-inside: avoid;
+    }
+    .note .tag { color: var(--muted); }
+
+    pre {
+        font-family: var(--mono);
+        font-size: 9pt;
+        line-height: 1.5;
+        background: var(--code-bg);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 13px 15px;
+        white-space: pre;
+        overflow: hidden;
+        margin: 12px 0;
+    }
+
+    /* Flow prose to fill pages; keep only atomic blocks together and headings
+       attached to what follows them. */
+    .section { }
+    .pagebreak { }
+    h2, h3 { break-after: avoid; page-break-after: avoid; }
+    .analogy, .real, .note, pre, dt { break-inside: avoid; page-break-inside: avoid; }
+    dt { break-after: avoid; page-break-after: avoid; }
+
+    /* cover */
+    .cover {
+        height: 244mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        page-break-after: always;
+    }
+    .cover-top { padding-top: 34mm; }
+    .kicker {
+        font-family: var(--mono);
+        font-size: 10pt;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 16px;
+    }
+    .cover h1 {
+        font-size: 39pt;
+        letter-spacing: -0.02em;
+        margin: 0 0 14px 0;
+        line-height: 1.05;
+    }
+    .cover .subtitle {
+        font-size: 14pt;
+        color: var(--muted);
+        max-width: 155mm;
+        line-height: 1.5;
+        font-weight: 400;
+    }
+    .cover .promise {
+        margin-top: 26px;
+        font-size: 11.5pt;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 18px;
+        max-width: 150mm;
+    }
+    .cover-meta {
+        border-top: 1px solid var(--line);
+        padding-top: 14px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 9.5pt;
+        color: var(--muted);
+        font-family: var(--mono);
+    }
+
+    .big-q {
+        font-size: 13pt;
+        font-weight: 650;
+        color: var(--ink);
+        margin: 6px 0 2px;
+    }
+
+    dl { margin: 10px 0; }
+    dt {
+        font-weight: 700;
+        color: var(--teal);
+        margin-top: 12px;
+        font-size: 11.4pt;
+    }
+    dd { margin: 3px 0 0 0; padding-left: 0; }
+
+    .foot {
+        font-size: 8.5pt;
+        color: var(--muted);
+        text-align: center;
+        border-top: 1px solid var(--line-soft);
+        margin-top: 14px;
+        padding-top: 8px;
+        font-family: var(--mono);
+    }
+</style>
+</head>
+<body>
+
+<!-- ===== COVER ===== -->
+<div class="cover">
+    <div class="cover-top">
+        <div class="kicker">Explain It Like I'm Five</div>
+        <h1>The Render Farm,<br>Explained Simply</h1>
+        <div class="subtitle">The same system as the design document, but told slowly and from the very beginning, assuming you know nothing about computers, servers, or queues. Every word is explained the first time it is used.</div>
+        <div class="promise">
+            <strong>The promise of this document:</strong> if you can picture a busy restaurant kitchen, you can understand this entire system. We will build the whole picture out of that one idea, and only afterward attach the real computer words to each part.
+        </div>
+    </div>
+    <div class="cover-meta">
+        <span>distributed-system-demo</span>
+        <span>Companion to the System Design Document &nbsp;.&nbsp; 2026-07-03</span>
+    </div>
+</div>
+
+<!-- ===== 1. WHAT IS THIS ===== -->
+<div class="section">
+    <h2><span class="n">1</span>What is this thing, really?</h2>
+    <div class="rule"></div>
+
+    <p>Imagine a busy restaurant kitchen during a dinner rush. Orders come in. Cooks pick them up and make the food. Some cooks are fast, some are slow. Sometimes a cook suddenly quits and walks out in the middle of cooking a dish. When it gets very busy, the manager pulls in extra cooks; when it quiets down, the manager sends some cooks home. And there is a big screen on the wall showing you, in real time, every order and every cook.</p>
+
+    <p>That is exactly what this project is - except instead of a kitchen making food, it is a <strong>computer system making pictures</strong>. And instead of you having to imagine it, the screen is real: you open a web page and watch the whole thing happen, over and over, forever.</p>
+
+    <div class="analogy">
+        <span class="tag">The kitchen</span>
+        <p>Throughout this document, the <strong>kitchen</strong> is our picture of the system. Orders are jobs to do. Cooks are little worker programs. The manager is the part that keeps the whole thing running. We will use this same kitchen the whole way through, so it is worth holding onto.</p>
+    </div>
+
+    <p>The project is called a <strong>render farm</strong>. "Render" is the word for a computer turning instructions into a finished picture (the way a movie studio "renders" each frame of an animated film). A "farm" just means a lot of computers doing that work together. So a render farm is a crowd of computers cooperating to turn out picture after picture.</p>
+
+    <p>One important, honest detail: in this demo the cooks do not really cook. They <em>pretend</em> to work for a few seconds, the way an actor pretends to chop vegetables. Everything <em>around</em> the pretending is genuinely real, though - the orders are real, the cooks are real separate programs, and when a cook "quits," it really does stop existing. We will come back to why that distinction matters. For now: the work is pretend, but the teamwork is real.</p>
+</div>
+
+<!-- ===== 2. WORDS ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">2</span>A few words we will need</h2>
+    <div class="rule"></div>
+    <p>Before we go further, here are the plain-language meanings of the words that will keep coming up. You do not need to memorize these; just glance at them, and come back if a word later feels slippery.</p>
+
+    <dl>
+        <dt>Program</dt>
+        <dd>A set of instructions a computer follows. A recipe, basically. On its own it is just words on paper.</dd>
+
+        <dt>Process</dt>
+        <dd>A program that is <em>actually running right now</em>, doing its thing. The difference between a program and a process is the difference between a recipe in a book and a cook actively following that recipe at the stove. In our kitchen, <strong>each cook is a process</strong>. They are genuinely separate - one cook quitting does not stop the others, exactly like one running program crashing does not crash the others.</dd>
+
+        <dt>Server</dt>
+        <dd>A program (a process) whose whole job is to wait for requests and answer them. "Serve" as in a waiter serving tables. The manager of our kitchen is a server.</dd>
+
+        <dt>Queue</dt>
+        <dd>A line of things waiting their turn, like people lined up at a coffee shop. New items join the back; workers take items from the front. In the kitchen this is the <strong>rail of order tickets</strong> waiting to be cooked.</dd>
+
+        <dt>Job (or "frame")</dt>
+        <dd>One single piece of work to be done. In this system one job is one <strong>frame</strong> - one picture to produce. Think of it as one order ticket.</dd>
+
+        <dt>Worker</dt>
+        <dd>A process whose job is to take work off the queue and do it. Our <strong>cooks</strong> are workers.</dd>
+
+        <dt>Redis</dt>
+        <dd>A shared, super-fast scratchpad that every program can read from and write to at once. Picture a big whiteboard bolted to the kitchen wall that every cook and the manager can all see and update. Redis is where the order rail actually lives, so that all the separate cooks are looking at the <em>same</em> list of orders.</dd>
+
+        <dt>WebSocket</dt>
+        <dd>A phone line between two programs that stays open, so either side can talk the instant it has something to say, without hanging up and redialing. This is the always-on connection between the kitchen and the screen on the wall.</dd>
+
+        <dt>Snapshot</dt>
+        <dd>A photograph of the entire situation at one moment - every order, every cook, everything - frozen in time. The screen is really just a rapid slideshow of these snapshots.</dd>
+    </dl>
+
+    <div class="note">
+        <span class="tag">Why "separate" keeps getting emphasized</span>
+        <p>A lot of this document leans on the idea that the cooks are <em>truly separate</em> running programs, not pretend ones drawn on a screen. That separateness is the whole point of the project. It is what makes a crash a real crash and recovery a real recovery, instead of a magic trick. Keep an eye out for the word "separate" - it is doing a lot of work.</p>
+    </div>
+</div>
+
+<!-- ===== 3. THE PLAYERS ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">3</span>Who is in the kitchen</h2>
+    <div class="rule"></div>
+    <p>Our system has four kinds of characters. Here is each one, what it does, and the real name it has in the code.</p>
+
+    <h3>The whiteboard on the wall - Redis</h3>
+    <p>Everything the kitchen shares lives on one big whiteboard that everyone can see: the list of orders waiting, and little status notes the cooks scribble about what they are doing. The cooks never talk to each other directly. They only read and write the whiteboard. This is powerful: because there is one shared whiteboard, any cook can pick up any order, and nobody needs to be told who is doing what.</p>
+    <div class="real"><span class="tag">The real thing</span><p>The whiteboard is <strong>Redis</strong>. The order rail is a queue that runs on top of Redis, managed by a helper called <strong>BullMQ</strong> (think of BullMQ as the set of rules for how tickets get hung up, grabbed, and checked off). The scribbled status notes travel on a separate part of the whiteboard called a "channel."</p></div>
+
+    <h3>The manager - the orchestrator</h3>
+    <p>One character watches over everything. The manager does not cook. Instead, the manager: puts fresh orders onto the rail, hires new cooks when orders pile up, sends cooks home when it is quiet, occasionally causes a cook to quit on purpose (to show off how the kitchen recovers), keeps a running story of everything that happens, and feeds the screen on the wall.</p>
+    <div class="real"><span class="tag">The real thing</span><p>The manager is the <strong>orchestrator</strong> - a server program. Inside it lives a smaller brain called the <strong>Director</strong> that makes the moment-to-moment decisions. "Orchestrator" is a good word for it: like an orchestra conductor, it does not play an instrument, it coordinates everyone who does.</p></div>
+
+    <h3>The cooks - workers</h3>
+    <p>The cooks do the actual work. Each cook grabs one order at a time from the rail, makes it in two steps (more on that soon), scribbles progress on the whiteboard as they go, and then grabs the next order. Each cook is a completely separate person - if one faints, the others keep cooking.</p>
+    <div class="real"><span class="tag">The real thing</span><p>Each cook is a <strong>worker process</strong>. The manager creates them by "forking," which is the computer word for starting a brand-new separate program. Each cook has their own private connection to the whiteboard.</p></div>
+
+    <h3>The screen on the wall - the web page</h3>
+    <p>Finally there is the big screen showing the whole kitchen live. The screen only <em>watches</em>. It cannot cook, cannot touch orders, cannot change anything. It just shows you what is happening and gives you a few buttons to poke the kitchen with.</p>
+    <div class="real"><span class="tag">The real thing</span><p>The screen is a <strong>web page</strong> (a "single-page app") in your browser. It receives snapshots over the WebSocket phone line and draws them. It never touches Redis and holds no secrets - closing it changes nothing about the running kitchen.</p></div>
+
+<pre>        +----------- THE WHITEBOARD (Redis) -----------+
+        |   the order rail  +  the cooks' status notes  |
+        +----^--------------------^---------------^-----+
+             |                    |               |
+      +------+--------------------+---------------+------+
+      |   THE MANAGER (orchestrator)                     |
+      |   hires/fires cooks . adds orders . tells        |
+      |   the story . sends photos to the screen         |
+      +---+----------+-----------+------------+-----------+
+          |          |           |            | phone line
+       +--+--+    +--+--+     +--+--+     +----+-----+
+       | cook|    | cook|  .. | cook|     |  SCREEN  |
+       +-----+    +-----+     +-----+     | (watches)|
+        each one a separate person        +----------+</pre>
+</div>
+
+<!-- ===== 4. THE JOURNEY OF ONE ORDER ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">4</span>The journey of one order</h2>
+    <div class="rule"></div>
+    <p>Let us follow a single order from start to finish, slowly. This is the heartbeat of the whole system, so it is worth taking our time.</p>
+
+    <p><strong>Step one - the order appears.</strong> The manager writes a new order ticket and hangs it on the rail. Right now it is just waiting; no cook has touched it. On the screen this shows up as a card in the first column, labeled <strong>QUEUED</strong> (which simply means "waiting in line").</p>
+
+    <p><strong>Step two - a cook grabs it.</strong> The moment any cook is free, they take the next ticket off the rail. Nobody assigned it to them; they just took the next one available. That order's card now moves out of the waiting column.</p>
+
+    <p><strong>Step three - the work, in two halves.</strong> Making the picture happens in two steps, one after the other:</p>
+    <ul>
+        <li><strong>RENDERING</strong> - the first half. In our kitchen, think of this as "cooking the main part of the dish." It takes a couple of seconds. As the cook works, they keep scribbling a percentage on the whiteboard: 10% done, 40% done, 80% done. The screen shows this as a little filling progress bar.</li>
+        <li><strong>COMPOSITING</strong> - the second half. Think of this as "plating and garnishing" - assembling the finished result. It also takes a couple of seconds and also fills up a progress bar.</li>
+    </ul>
+
+    <p><strong>Step four - done.</strong> When both halves are finished, the order is complete. Its card slides into the final column, <strong>DONE</strong>, and the cook is immediately free to grab the next ticket.</p>
+
+<pre>   waiting        first half        second half        finished
+   in line
+  [ QUEUED ]  ->  [ RENDERING ]  ->  [ COMPOSITING ]  ->  [ DONE ]
+                  ~2.5 seconds        ~2.5 seconds
+                  progress bar        progress bar
+                  fills 0..100%       fills 0..100%</pre>
+
+    <div class="note"><span class="tag">Why two halves instead of one</span><p>Splitting the work into two visible steps is a deliberate choice for the demo: it means there is always motion on the screen. An order is either waiting, in its first half, in its second half, or done - and it is constantly sliding from one to the next, so the picture never sits still.</p></div>
+
+    <div class="real"><span class="tag">The real thing</span><p>The four columns - QUEUED, RENDERING, COMPOSITING, DONE - are the real "stages" a frame passes through, and they are the four columns of the board you see. Each half is roughly 2.5 seconds of pretend work, so a whole frame takes about 5 seconds from start to finish.</p></div>
+</div>
+
+<!-- ===== 5. LOAD BALANCING ===== -->
+<div class="section">
+    <h2><span class="n">5</span>How the work spreads out by itself</h2>
+    <div class="rule"></div>
+    <p>Here is something that seems like it should need a boss barking assignments, but does not. Nobody ever tells a cook <em>which</em> order to make. There is just the one shared rail, and the rule "when you are free, take the next ticket." That single rule is enough to spread the work evenly, all on its own.</p>
+
+    <p>Think about why. A fast cook finishes quickly, becomes free sooner, and so grabs more tickets. A slow cook holds their ticket longer and grabs fewer. Without anyone planning it, the work naturally flows to whoever has hands free. Busy cooks are left alone; idle cooks pull the load. The balance is not designed - it <em>emerges</em> from the shared rail.</p>
+
+    <div class="real"><span class="tag">The real thing</span><p>The grown-up name for this is <strong>load balancing</strong>, and this is one of the four headline behaviors the demo shows off. The remarkable part is that there is no load-balancing code at all. There is only a shared queue and idle workers pulling from it. That is genuinely how many real distributed systems spread their work.</p></div>
+</div>
+
+<!-- ===== 6. CRASH ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">6</span>When a cook quits in the middle</h2>
+    <div class="rule"></div>
+    <p>This is the most important part, and the coolest, so we will go very slowly.</p>
+
+    <p>Every so often - either because the manager decides to cause a little drama, or because you press the "Kill a node" button yourself - a cook is made to <strong>quit instantly</strong>. Not "finish up and leave." Not "hand off your dish." They vanish mid-cooking, holding a half-made order, with no goodbye and no cleanup. Their card on the screen flashes red.</p>
+
+    <div class="analogy"><span class="tag">In the kitchen</span><p>Picture a cook who, right in the middle of a dish, drops everything and storms out the back door. The half-finished order is now sitting there, claimed by someone who is gone. If nothing were done, that order would be stuck forever - nobody else feels allowed to touch it, because as far as anyone knows, it "belongs" to the cook who left.</p></div>
+
+    <p><strong>So how does the order get rescued?</strong> There is a simple, clever rule. When a cook takes an order, they put their name tag on it - a claim that says "I've got this." But the claim is not permanent; it is more like a sticky note that has to be <em>refreshed</em> every few seconds to stay valid. A cook who is actually working keeps refreshing it without thinking. A cook who has stormed out, of course, refreshes nothing.</p>
+
+    <p>So after a few seconds, the abandoned order's claim goes stale. Meanwhile, the other cooks are periodically glancing around for orders whose claims have gone stale. The moment one of them spots the orphaned order, they announce "this one was abandoned," put it back on the waiting rail, and it gets picked up fresh by whoever is next free. The picture finishes - just on a different cook.</p>
+
+<pre>  0s   cook is working, refreshing its claim every moment
+  0s   * SIGKILL *  the cook vanishes, claim frozen mid-air
+  ~4s  the stale claim finally expires (nobody refreshed it)
+  ~4-6s another cook notices the orphan, puts it back in line
+  ~6s+ a free cook grabs it and finishes it normally
+                                    total rescue: about 4 to 8 seconds</pre>
+
+    <div class="real"><span class="tag">The real thing</span><p>Quitting instantly is a real <strong>SIGKILL</strong> - a computer signal that means "stop this program immediately, no chance to clean up." The name tag is a <strong>lock</strong>; refreshing it is renewing the lock; the claim going stale is the lock expiring after about 4 seconds. The other cooks glancing around is the <strong>stalled-job check</strong> that runs every 2 seconds. Add those up and a rescued order comes back within about 4 to 8 seconds. This whole recovery is done by the queue system (BullMQ) itself - it is not faked for the demo. The grown-up name for this behavior is <strong>fault tolerance</strong>: the system tolerates a part breaking without losing the work.</p></div>
+
+    <div class="note"><span class="tag">Nothing ever gets truly lost</span><p>An order can be rescued and re-tried many times if it keeps getting orphaned. There is a very generous limit before the system gives up. And even if an order somehow used up every retry, it still gets moved to the DONE column - just marked in red as "failed" - so the kitchen is never stuck waiting on an order that will never finish. The line always keeps moving.</p></div>
+</div>
+
+<!-- ===== 7. AUTOSCALING ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">7</span>Hiring and sending cooks home</h2>
+    <div class="rule"></div>
+    <p>A good kitchen manager watches how many orders are piling up and adjusts the number of cooks to match. Our manager does exactly this, using one simple number: <strong>how many orders are currently waiting on the rail</strong>.</p>
+
+    <ul>
+        <li><strong>Too many orders waiting?</strong> If the pile of waiting orders grows past a certain size, the manager hires one more cook - starts up a brand-new worker to help clear the backlog. It will keep hiring, one cook at a time on later checks, up to a maximum of six cooks. More hands, faster clearing.</li>
+        <li><strong>Hardly any orders waiting?</strong> If the pile shrinks below a small threshold, the manager sends one cook home - but only a cook who is currently idle, never one in the middle of an order. It will keep trimming down to a minimum of two cooks, so there is always at least a small crew ready.</li>
+        <li><strong>Somewhere in between?</strong> The manager leaves the crew exactly as it is. It only changes the number of cooks by one at a time, and never hires and fires in the same breath, so the crew size cannot flip-flop wildly.</li>
+    </ul>
+
+    <div class="analogy"><span class="tag">In the kitchen</span><p>Dinner rush hits, tickets stack up, the manager waves in extra cooks from the back. The rush passes, the rail empties out, the manager quietly tells the cooks who are standing around to clock out. The kitchen breathes in and out with the demand.</p></div>
+
+    <div class="real"><span class="tag">The real thing</span><p>This is <strong>autoscaling</strong> - the system automatically growing and shrinking its own workforce based on load. Hiring a cook is "forking a new worker process"; sending one home is closing a worker gracefully. On the screen you literally watch cook cards appear when it is busy and disappear when it is calm, with the story log announcing each "autoscaling up" and "autoscaling down."</p></div>
+</div>
+
+<!-- ===== 8. PRIORITIES ===== -->
+<div class="section">
+    <h2><span class="n">8</span>Rush orders that jump the line</h2>
+    <div class="rule"></div>
+    <p>Not every order is equal. Some are marked <strong>rush</strong> - VIP orders that should be made before the ordinary ones. When a rush order is hung on the rail, it does not go to the back of the line like everyone else. It jumps toward the front, so the next free cook grabs it ahead of the ordinary orders that were already waiting.</p>
+
+    <p>One honest limit: a rush order cannot yank a dish out of a cook's hands. A cook who is already mid-order finishes that one. What a rush order jumps is the <em>waiting line</em>, not work already underway. So on screen you see a rush order slide up toward the front of the QUEUED column and start cooking sooner than its neighbors - but it politely lets in-progress dishes finish.</p>
+
+    <div class="real"><span class="tag">The real thing</span><p>This is <strong>job priority</strong>, the fourth headline behavior. About one in seven orders is randomly marked rush. The queue itself understands priority and hands out the highest-priority waiting order first - so, just like load balancing, the line-jumping is a genuine property of the shared queue, not the screen rearranging cards to look pretty. Rush orders wear a distinct badge so you can spot them.</p></div>
+</div>
+
+<!-- ===== 9. THE DIRECTOR / CYCLE ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">9</span>How it runs forever on its own</h2>
+    <div class="rule"></div>
+    <p>Nobody has to babysit this kitchen. It runs itself in a loop, over and over, forever. The manager follows a simple four-beat rhythm:</p>
+
+    <ul>
+        <li><strong>Beat 1 - fill the rail.</strong> Starting from an empty kitchen, the manager hangs up a fresh batch of orders (about sixteen), a few of them marked rush.</li>
+        <li><strong>Beat 2 - run the rush.</strong> The cooks work through the orders. Every five to ten seconds, the manager stirs in a bit of drama: maybe it hires a cook, maybe it sends one home, maybe it makes a cook quit so you can watch the rescue. This is the beat you spend the most time watching.</li>
+        <li><strong>Beat 3 - all done.</strong> When every order has reached the DONE column and the rail is empty, the kitchen pauses for a satisfied moment.</li>
+        <li><strong>Beat 4 - reset.</strong> The manager wipes the board clean, counts up one (cycle 1, cycle 2, cycle 3...), and goes right back to Beat 1.</li>
+    </ul>
+
+<pre>   FILL THE RAIL  ->  RUN THE RUSH  ->  ALL DONE  ->  RESET
+   (add a batch)     (cook + drama)    (brief beat)  (wipe, count up)
+        ^                                                 |
+        +-------------------------------------------------+
+                        round and round, forever</pre>
+
+    <div class="note"><span class="tag">You can grab the wheel too</span><p>The four buttons on the screen - Pause, Inject more orders, Kill a cook, and Reset - poke the very same machinery the manager uses on its own. Pausing freezes only the manager's <em>automatic</em> drama; the cooks keep finishing what they were doing, and you can still personally cause a cook to quit even while paused. Your hand and the manager's hand pull the exact same levers.</p></div>
+
+    <div class="real"><span class="tag">The real thing</span><p>The four-beat rhythm is called a <strong>cycle</strong>, and the little brain running it is the <strong>Director</strong>. A neat design detail: all of the Director's <em>decisions</em> are made by a small, self-contained piece of logic that just reads the situation and says what should happen, while a separate piece actually does it. Keeping "deciding" and "doing" apart is what makes the manager's brain easy to test and trust.</p></div>
+</div>
+
+<!-- ===== 10. THE SCREEN ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">10</span>How we get to watch it all</h2>
+    <div class="rule"></div>
+    <p>How does the picture on the screen stay so up to date? The manager takes a full photograph of the whole kitchen - every order, every cook, every progress bar, the running story - about five times every second, and sends each photo down the open phone line to the screen. The screen just shows you the newest photo. Five photos a second is fast enough that it looks like smooth, live motion.</p>
+
+    <p>Sending the <em>whole</em> photo each time, rather than only "what changed," sounds wasteful, but at this small size (a couple dozen orders, a handful of cooks) a photo is tiny. And it comes with a lovely bonus: if you open the screen halfway through a rush, the very first photo you receive already shows the complete, correct picture. There is no awkward moment of catching up.</p>
+
+    <div class="analogy"><span class="tag">In the kitchen</span><p>Think of a security camera pointed at the kitchen, feeding a live picture to a monitor. The monitor does not need to understand cooking; it just faithfully shows whatever the camera sees, moment to moment. Walk up to the monitor at any time and you instantly see the true current state.</p></div>
+
+    <p>There are two more little pieces worth naming, because they are where the picture actually comes from:</p>
+    <ul>
+        <li><strong>The order rail tells the manager where each order is</strong> - waiting, being worked on, finished, or abandoned. This is the trustworthy backbone of the picture.</li>
+        <li><strong>Each cook shouts out what they personally are doing</strong> - "I'm node three, I'm on order 12, I'm 60% through the second half" - by scribbling on the whiteboard. This is how the manager knows the fine details each photo needs, like which cook owns which order and how full each progress bar is.</li>
+    </ul>
+
+    <div class="real"><span class="tag">The real thing</span><p>The photo is a <strong>WorldState snapshot</strong>; five-per-second is the broadcast rate; the open phone line is a <strong>WebSocket</strong>. The two sources - the queue's order lifecycle and the cooks' shouted status - are the system's "two channels of truth," which the manager blends into each single photo. And if the phone line drops, the screen quietly keeps redialing until it reconnects, so a hiccup heals itself.</p></div>
+</div>
+
+<!-- ===== 11. WHY BUILD IT THIS WAY ===== -->
+<div class="section">
+    <h2><span class="n">11</span>Why go to all this trouble?</h2>
+    <div class="rule"></div>
+    <p>A fair question: if the cooking is pretend anyway, why bother with truly separate cooks, a real shared whiteboard, and real quitting? Why not just draw a cartoon of a kitchen that only <em>looks</em> like this is happening?</p>
+
+    <p>Because a cartoon would be a lie, and this is meant to teach the truth. The interesting behaviors here - work spreading itself out, a crash being survived, the crew growing and shrinking, rush orders cutting the line - are not things someone drew. They <em>happen</em>, as real consequences of real separate programs sharing one real queue. When you watch a rescued order come back, you are watching an actual recovery mechanism do its actual job, not an animation of one.</p>
+
+    <p>That is the entire spirit of the project: make something you can <em>watch</em> and <em>poke</em>, where the only thing faked is the boring part (the cooking), and everything that makes it a genuine distributed system is honestly real. The value is not the pictures it "renders" - it is seeing, with your own eyes, how a crowd of independent programs can cooperate, stumble, recover, and keep going.</p>
+
+    <div class="note"><span class="tag">The one-sentence version</span><p>It is a real, tiny distributed system dressed up as a render farm, running itself in a loop so you can watch load balancing, crash recovery, autoscaling, and priorities actually happen - live, on a screen, forever.</p></div>
+</div>
+
+<!-- ===== 12. RECAP ===== -->
+<div class="pagebreak section">
+    <h2><span class="n">12</span>The whole thing, in one breath</h2>
+    <div class="rule"></div>
+
+    <p class="big-q">What is it?</p>
+    <p>A pretend render farm that behaves like a real distributed system, so you can watch a crowd of programs cooperate.</p>
+
+    <p class="big-q">Who is in it?</p>
+    <p>A shared <strong>whiteboard</strong> (Redis) holding the order rail; a <strong>manager</strong> (the orchestrator, with its Director brain); several <strong>cooks</strong> (worker processes); and a <strong>screen</strong> (the web page) that only watches.</p>
+
+    <p class="big-q">What happens to one order?</p>
+    <p>It appears on the rail (QUEUED), a free cook grabs it, works it through two halves (RENDERING then COMPOSITING), and it lands in DONE - about five seconds, start to finish.</p>
+
+    <p class="big-q">What are the four things it shows off?</p>
+    <ul>
+        <li><strong>Work spreading by itself</strong> (load balancing) - one shared rail; free cooks pull the next order, no boss needed.</li>
+        <li><strong>Surviving a crash</strong> (fault tolerance) - a cook quits; its abandoned order's claim goes stale and another cook rescues it.</li>
+        <li><strong>Growing and shrinking the crew</strong> (autoscaling) - hire when orders pile up, send idle cooks home when it is calm.</li>
+        <li><strong>Rush orders jumping the line</strong> (priorities) - VIP orders cut ahead of waiting ones, but let in-progress dishes finish.</li>
+    </ul>
+
+    <p class="big-q">How do we see it?</p>
+    <p>The manager photographs the whole kitchen five times a second and sends each photo down an always-open phone line to the screen, which shows the newest one.</p>
+
+    <p class="big-q">And then?</p>
+    <p>The rail empties, the manager wipes the board, counts up one, refills it, and the whole thing goes again. Forever.</p>
+
+    <div class="foot">Render Farm - Distributed System Demo &nbsp;.&nbsp; Explain It Like I'm Five &nbsp;.&nbsp; companion to the System Design Document &nbsp;.&nbsp; 2026-07-03</div>
+</div>
+
+</body>
+</html>

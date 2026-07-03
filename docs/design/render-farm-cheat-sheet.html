@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Render Farm - Cheat Sheet</title>
+<style>
+    :root {
+        --ink: #14161a;
+        --muted: #5b6270;
+        --line: #d9dde4;
+        --line-soft: #eceef2;
+        --accent: #2f5bd7;
+        --render: #b45309;
+        --composite: #7c3aed;
+        --danger: #c0362c;
+        --success: #1a7f4b;
+        --warn: #a9740a;
+        --code-bg: #f6f7f9;
+        --card: #fbfcfd;
+        --mono: "SF Mono", "JetBrains Mono", "Menlo", "Consolas", monospace;
+        --sans: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    @page { size: A4; margin: 12mm 12mm 13mm 12mm; }
+    * { box-sizing: border-box; }
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { font-family: var(--sans); color: var(--ink); font-size: 8.9pt; line-height: 1.42; margin: 0; }
+
+    .masthead {
+        display: flex; justify-content: space-between; align-items: flex-end;
+        border-bottom: 2.5px solid var(--ink); padding-bottom: 8px; margin-bottom: 12px;
+    }
+    .masthead h1 { font-size: 19pt; margin: 0; letter-spacing: -0.02em; }
+    .masthead .sub { font-size: 8.5pt; color: var(--muted); margin-top: 2px; }
+    .masthead .kick { font-family: var(--mono); font-size: 7.5pt; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+    .masthead .right { text-align: right; font-family: var(--mono); font-size: 7.5pt; color: var(--muted); line-height: 1.6; }
+
+    .grid { column-count: 2; column-gap: 12px; }
+
+    .card {
+        break-inside: avoid;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: var(--card);
+        padding: 9px 11px 10px;
+        margin-bottom: 10px;
+    }
+    .card h2 {
+        font-size: 9.6pt; margin: 0 0 6px 0; padding-bottom: 4px;
+        border-bottom: 1px solid var(--line-soft);
+        display: flex; align-items: center; gap: 7px;
+    }
+    .card h2 .ic {
+        font-family: var(--mono); font-size: 7pt; font-weight: 700;
+        background: var(--accent); color: #fff; border-radius: 4px;
+        width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center;
+        flex: none;
+    }
+    .card.render h2 .ic { background: var(--render); }
+    .card.composite h2 .ic { background: var(--composite); }
+    .card.danger h2 .ic { background: var(--danger); }
+    .card.success h2 .ic { background: var(--success); }
+    .card.warn h2 .ic { background: var(--warn); }
+
+    ul { margin: 0; padding-left: 15px; }
+    li { margin: 4px 0; }
+    li b { font-weight: 650; }
+
+    code {
+        font-family: var(--mono); font-size: 0.85em;
+        background: var(--code-bg); border: 1px solid var(--line-soft);
+        border-radius: 3px; padding: 0.5px 3px;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-top: 3px; }
+    th, td { text-align: left; padding: 3px 5px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+    th { font-weight: 650; border-bottom: 1.2px solid var(--line); }
+    td.k { font-family: var(--mono); font-size: 7.6pt; white-space: nowrap; }
+
+    .flow {
+        font-family: var(--mono); font-size: 7.4pt; line-height: 1.5;
+        background: var(--code-bg); border: 1px solid var(--line);
+        border-radius: 5px; padding: 7px 8px; margin: 4px 0 2px; white-space: pre;
+    }
+    .pill {
+        font-family: var(--mono); font-size: 6.8pt; font-weight: 700;
+        padding: 1px 5px; border-radius: 3px; white-space: nowrap;
+    }
+    .pill.q { background: #eef0f3; color: #414855; }
+    .pill.r { background: #fdf0dc; color: var(--render); }
+    .pill.c { background: #f1e9fd; color: var(--composite); }
+    .pill.d { background: #e3f4ea; color: var(--success); }
+
+    .foot { font-family: var(--mono); font-size: 7pt; color: var(--muted); text-align: center; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line-soft); column-span: all; }
+    .lead-note { column-span: all; font-size: 8.7pt; color: var(--ink); background: #f4f7fe; border: 1px solid #dbe4fb; border-left: 3px solid var(--accent); border-radius: 6px; padding: 7px 11px; margin-bottom: 11px; }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+    <div>
+        <div class="kick">Distributed System Demo</div>
+        <h1>Render Farm - Cheat Sheet</h1>
+        <div class="sub">Real Redis + real BullMQ. Workers are separate OS processes. A crash is a real SIGKILL, recovery is real stalled-job detection.</div>
+    </div>
+    <div class="right">
+        WEB&nbsp;:5173<br>API/WS&nbsp;:3001<br>REDIS&nbsp;:6379<br>rev 2026-07-03
+    </div>
+</div>
+
+<div class="lead-note">
+    <b>One-line mental model:</b> Frames enter a shared queue; idle workers pull them; the orchestrator merges BullMQ lifecycle events and worker telemetry into one WorldState and broadcasts it to the browser at 5 Hz. An autonomous Director seeds each cycle and injects drama (crash, scale up, scale down) every 5 to 10 seconds, forever.
+</div>
+
+<div class="grid">
+
+    <!-- RUN IT -->
+    <div class="card success">
+        <h2><span class="ic">1</span>Run it &amp; drive it</h2>
+        <ul>
+            <li><b>Start everything</b> with <code>npm install</code>, then <code>npm run redis:start</code> (or <code>docker compose up -d</code>) to bring up Redis, then <code>npm run dev</code> to launch the orchestrator (which forks the workers) alongside the Vite SPA. Open <code>http://localhost:5173</code> and it cycles on its own.</li>
+            <li><b>Pause / Resume</b> freezes and resumes only the Director's autonomous drama; frames already in flight keep processing while paused.</li>
+            <li><b>+ Inject 5</b> adds five more frames to the current cycle through the same seed path the Director uses.</li>
+            <li><b>Kill a node</b> sends a real <code>SIGKILL</code> to a busy worker so you can watch fault recovery; it works even while paused and falls back to any node if none are busy.</li>
+            <li><b>Reset</b> obliterates the queue, clears the board, bumps the cycle number, and restarts from seeding.</li>
+        </ul>
+    </div>
+
+    <!-- FOUR BEHAVIORS -->
+    <div class="card">
+        <h2><span class="ic">2</span>The four behaviors, briefly</h2>
+        <ul>
+            <li><b>Load balancing</b> is emergent from a single shared queue: whichever worker is idle pulls the next frame, with no assignment logic anywhere in the code.</li>
+            <li><b>Fault tolerance</b> comes from BullMQ stalled-job detection: a killed worker's Redis lock expires, a survivor notices the orphan on its next sweep, and the frame re-queues and completes elsewhere.</li>
+            <li><b>Autoscaling</b> is the Director reacting to queue depth: a deep backlog forks a worker, a draining queue retires an idle one, always within the min/max bounds.</li>
+            <li><b>Priorities</b> use BullMQ's own priority field so a flagged frame overtakes normal frames still waiting, rather than the front-end merely re-sorting cards.</li>
+        </ul>
+    </div>
+
+    <!-- STAGE FLOW -->
+    <div class="card render">
+        <h2><span class="ic">3</span>Frame &amp; stage model</h2>
+        <ul>
+            <li><b>A job is one render frame</b>, identified <code>f&lt;cycle&gt;-&lt;seq&gt;</code> (for example <code>f1-3</code>), and that id is used directly as the BullMQ <code>jobId</code> so lifecycle events map straight onto frames.</li>
+            <li><b>Two timed stages run in strict order</b>, RENDERING then COMPOSITING, each roughly <code>STAGE_MS</code> (2500 ms), so a frame takes about five seconds end to end and its motion is continuously visible.</li>
+        </ul>
+        <div class="flow"><span class="pill q">QUEUED</span> ─►  <span class="pill r">RENDERING</span> ─►  <span class="pill c">COMPOSITING</span> ─►  <span class="pill d">DONE</span></div>
+    </div>
+
+    <!-- TWO CHANNELS -->
+    <div class="card composite">
+        <h2><span class="ic">4</span>Two channels of truth</h2>
+        <ul>
+            <li><b>BullMQ QueueEvents is authoritative for lifecycle</b> - <code>added</code>, <code>completed</code>, <code>stalled</code>, <code>failed</code> - and answers "where is this frame"; the orchestrator folds it with <code>applyQueueEvent</code>.</li>
+            <li><b>The <code>worker:telemetry</code> pub/sub channel carries node detail</b> - which node owns which frame, current stage, live percent, heartbeat, per-node completed count - and is folded with <code>applyTelemetry</code>.</li>
+            <li><b>The two streams are unordered relative to each other</b>, so the merge is written to tolerate stragglers: a <code>stalled</code> event unconditionally clears frame ownership, and telemetry only syncs a frame that still reports a stage.</li>
+            <li><b>Both fold into one immutable WorldStore</b>, and a separate broadcaster ships the whole snapshot at 5 Hz, decoupling noisy inputs from the browser send rate.</li>
+        </ul>
+    </div>
+
+    <!-- DIRECTOR -->
+    <div class="card">
+        <h2><span class="ic">5</span>The Director cycle engine</h2>
+        <ul>
+            <li><b>The cycle is a four-phase machine</b> - SEED, RUNNING, COMPLETE, RESET - advanced by a timer firing at a random 5 to 10 second interval, looping forever.</li>
+            <li><b>All decisions live in a pure reducer</b>, <code>reduceDirector(state, action, ctx)</code>, which returns the next state plus a list of effects and performs no side effects, which is what makes the whole engine unit-testable without Redis.</li>
+            <li><b>The impure driver <code>runDirector</code> applies effects</b>: seed enqueues frames, spawn forks a worker, kill retires an idle node, crash SIGKILLs a busy one, resetQueue obliterates and clears.</li>
+            <li><b>Randomness is injected from outside</b> the reducer (two rolls in the context), so tests can force an exact crash or an exact no-crash deterministically.</li>
+            <li><b>Manual commands reuse the same paths</b>, so there is one tested code path per action rather than a parallel manual implementation.</li>
+        </ul>
+    </div>
+
+    <!-- CRASH RECOVERY -->
+    <div class="card danger">
+        <h2><span class="ic">6</span>Crash recovery timing</h2>
+        <ul>
+            <li><b>SIGKILL leaves a lock behind</b>: the worker dies mid-frame holding its Redis lock, which is never renewed again because the process is gone.</li>
+            <li><b>The lock expires after <code>LOCK_DURATION_MS</code></b> (4000 ms), after which the job is eligible to be seen as stalled by any surviving worker.</li>
+            <li><b>Survivors sweep every <code>STALLED_INTERVAL_MS</code></b> (2000 ms); the next sweep after expiry re-queues the orphan back to QUEUED, and an idle worker then completes it.</li>
+            <li><b>Worst-case recovery = LOCK_DURATION_MS + STALLED_INTERVAL_MS</b> = 6000 ms, landing recovery in a 4 to 8 second window - BullMQ's 30 s defaults would be far too slow to watch.</li>
+            <li><b>Retry headroom is generous</b> (<code>JOB_ATTEMPTS</code> 20, <code>MAX_STALLED_COUNT</code> 10) so a frame crashed several times still succeeds instead of failing.</li>
+        </ul>
+    </div>
+
+    <!-- AUTOSCALE -->
+    <div class="card warn">
+        <h2><span class="ic">7</span>Autoscaling &amp; priorities</h2>
+        <ul>
+            <li><b>Queue depth = waiting + prioritized jobs</b>, the single number the Director scales on.</li>
+            <li><b>Scale up</b> forks one worker when depth strictly exceeds <code>SCALE_UP_DEPTH</code> (6) and the pool is below <code>MAX_NODES</code> (6).</li>
+            <li><b>Scale down</b> retires one <em>idle</em> worker when depth strictly drops below <code>SCALE_DOWN_DEPTH</code> (2) and the pool is above <code>MIN_NODES</code> (2), so in-flight work is never interrupted.</li>
+            <li><b>Comparisons are strict and one action per tick</b>, pinned by boundary unit tests, so a depth sitting on a threshold does not oscillate the pool.</li>
+            <li><b>Priority frames use BullMQ priority 1 vs 5</b> (lower is higher); about <code>HIGH_PRIORITY_RATIO</code> (0.15) of a batch is flagged, and they overtake the <em>waiting</em> line, not frames already rendering.</li>
+        </ul>
+    </div>
+
+    <!-- WORKER PROCESS -->
+    <div class="card">
+        <h2><span class="ic">8</span>Worker process facts</h2>
+        <ul>
+            <li><b>Each worker is a forked Node process</b> launched via <code>fork()</code> under <code>tsx</code>, with its identity and timing knobs passed as environment variables (<code>NODE_ID</code>, <code>STAGE_MS</code>, lock and stalled intervals, and so on).</li>
+            <li><b>Each worker opens two Redis connections</b> - one for the BullMQ worker (<code>maxRetriesPerRequest: null</code>) and one dedicated telemetry publisher - and runs at concurrency 1, so one node processes one frame at a time.</li>
+            <li><b>An idle worker heartbeats</b> every <code>HEARTBEAT_INTERVAL_MS</code> (2000 ms) so it does not vanish from the strip between frames; while busy, progress ticks already prove it is alive.</li>
+            <li><b>Graceful retire is <code>SIGTERM</code></b> (clean close, removed at once); <b>a crash is <code>SIGKILL</code></b> (marked red, lingers 1500 ms on screen, then removed). Node ids come from a monotonic counter and are never reused.</li>
+        </ul>
+    </div>
+
+    <!-- WIRE TYPES -->
+    <div class="card">
+        <h2><span class="ic">9</span>Wire contract (@demo/shared)</h2>
+        <ul>
+            <li><b>Constants everyone shares</b>: queue <code>render-frames</code>, channel <code>worker:telemetry</code>, the four stages, event levels <code>info/success/warn/danger</code>, and command types.</li>
+            <li><b>Key shapes</b>: <code>Frame</code> (id, cycle, stage, nodeId, pct, priority, failed), <code>WorkerNode</code> (id, pid, state, frameId, pct, completed), <code>TelemetryMsg</code>, and the broadcast <code>WorldState</code>.</li>
+        </ul>
+        <table>
+            <tr><th>NodeState</th><th>Source</th></tr>
+            <tr><td class="k">idle / rendering / compositing / spawning</td><td>worker telemetry</td></tr>
+            <tr><td class="k">crashed</td><td>orchestrator on unexpected exit</td></tr>
+        </table>
+    </div>
+
+    <!-- TUNABLES -->
+    <div class="card">
+        <h2><span class="ic">10</span>Tunables (server/src/config)</h2>
+        <table>
+            <tr><th>Env var</th><th>Default</th></tr>
+            <tr><td class="k">BATCH_SIZE</td><td>16</td></tr>
+            <tr><td class="k">HIGH_PRIORITY_RATIO</td><td>0.15</td></tr>
+            <tr><td class="k">TICK_MIN_MS / MAX_MS</td><td>5000 / 10000</td></tr>
+            <tr><td class="k">STAGE_MS</td><td>2500</td></tr>
+            <tr><td class="k">MIN_NODES / MAX_NODES</td><td>2 / 6</td></tr>
+            <tr><td class="k">SCALE_UP / DOWN_DEPTH</td><td>6 / 2</td></tr>
+            <tr><td class="k">LOCK_DURATION_MS</td><td>4000</td></tr>
+            <tr><td class="k">STALLED_INTERVAL_MS</td><td>2000</td></tr>
+            <tr><td class="k">HEARTBEAT_INTERVAL_MS</td><td>2000</td></tr>
+            <tr><td class="k">JOB_ATTEMPTS / MAX_STALLED</td><td>20 / 10</td></tr>
+            <tr><td class="k">BROADCAST_HZ</td><td>5</td></tr>
+        </table>
+    </div>
+
+    <!-- TESTING GOTCHAS -->
+    <div class="card danger">
+        <h2><span class="ic">11</span>Testing &amp; gotchas</h2>
+        <ul>
+            <li><b>Stop <code>npm run dev</code> before server integration tests</b> - the demo and the tests share one Redis queue, and the tests flush Redis, so a running demo steals test jobs and the tests wipe the demo.</li>
+            <li><b>Integration tests run sequentially</b> because they all share that single queue; they need a real Redis on 6379.</li>
+            <li><b>Unit tests need no Redis</b>: the Director reducer, the world-state folds, the worker's stage ordering, and the command router are all pure or mockable.</li>
+            <li><b>To see a permanent FAILED card</b>, force the retry budget down with <code>MAX_STALLED_COUNT=0 JOB_ATTEMPTS=1</code> and kill a node; the frame still lands in DONE (red-bordered) so a cycle can never deadlock.</li>
+        </ul>
+    </div>
+
+    <!-- KEY FILES -->
+    <div class="card">
+        <h2><span class="ic">12</span>Where things live</h2>
+        <table>
+            <tr><th>Concern</th><th>File</th></tr>
+            <tr><td>Bootstrap / wiring</td><td class="k">server/src/index.ts</td></tr>
+            <tr><td>Decision reducer</td><td class="k">services/director/reduceDirector.ts</td></tr>
+            <tr><td>Effect driver</td><td class="k">services/director/runDirector.ts</td></tr>
+            <tr><td>Fork / kill workers</td><td class="k">services/nodePool/createNodePool.ts</td></tr>
+            <tr><td>Lifecycle fold</td><td class="k">worldState/applyQueueEvent.ts</td></tr>
+            <tr><td>Telemetry fold</td><td class="k">worldState/applyTelemetry.ts</td></tr>
+            <tr><td>Snapshot broadcast</td><td class="k">websocket/createBroadcaster.ts</td></tr>
+            <tr><td>Worker entry</td><td class="k">worker/src/index.ts</td></tr>
+            <tr><td>Stage pipeline</td><td class="k">worker/src/processFrame.ts</td></tr>
+            <tr><td>Browser socket hook</td><td class="k">web/src/state/useOrchestrator.ts</td></tr>
+            <tr><td>Shared contract</td><td class="k">shared/src/{types,constants}.ts</td></tr>
+        </table>
+    </div>
+
+</div>
+
+<div class="foot">Render Farm - Distributed System Demo &nbsp;.&nbsp; Cheat Sheet &nbsp;.&nbsp; keep beside the running demo &nbsp;.&nbsp; rev 2026-07-03</div>
+
+</body>
+</html>
