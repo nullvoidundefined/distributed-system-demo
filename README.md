@@ -84,7 +84,7 @@ All timing and threshold knobs live in `server/src/config/tunables.ts` and can b
 | `STAGE_MS`                            | 2500         | Simulated work per stage.                                                    |
 | `MIN_NODES` / `MAX_NODES`             | 2 / 6        | Autoscale bounds.                                                            |
 | `SCALE_UP_DEPTH` / `SCALE_DOWN_DEPTH` | 6 / 2        | Queue-depth thresholds for scaling.                                          |
-| `LOCK_DURATION_MS`                    | 4000         | Worker lock TTL; a crashed worker's frame is recoverable after this expires. |
+| `LOCK_DURATION_MS`                    | 6000         | Worker lock TTL; set above a frame's total work (2 x `STAGE_MS`) so a busy worker is never falsely stalled, and a crashed worker's frame becomes recoverable after this expires. |
 | `STALLED_INTERVAL_MS`                 | 2000         | How often a worker checks for stalled (orphaned) frames.                     |
 | `HEARTBEAT_INTERVAL_MS`               | 2000         | How often an idle worker re-announces itself on the telemetry channel.       |
 | `HIGH_PRIORITY_RATIO`                 | 0.15         | Fraction of seeded frames flagged high-priority.                             |
@@ -92,7 +92,9 @@ All timing and threshold knobs live in `server/src/config/tunables.ts` and can b
 
 Autoscale thresholds are strict comparisons per the design spec: scale up when depth *exceeds* `SCALE_UP_DEPTH`, scale down when it drains *below* `SCALE_DOWN_DEPTH`.
 
-The crash-recovery timing is the one thing tuned for the accelerated clock: `LOCK_DURATION_MS` + `STALLED_INTERVAL_MS` bound how fast an orphaned frame comes back (BullMQ's defaults of 30s are far too slow to watch). The integration test `server/src/__tests__/integration/crashRecovery.test.ts` validates that a `SIGKILL`ed worker's frame is recovered and completed by another worker.
+The crash-recovery timing is the one thing tuned for the accelerated clock: `LOCK_DURATION_MS` + `STALLED_INTERVAL_MS` bound how fast an orphaned frame comes back (BullMQ's defaults of 30s are far too slow to watch), so recovery lands within roughly 6-8s. `LOCK_DURATION_MS` (6000) is deliberately set above a frame's total work (2 x `STAGE_MS` = 5000) so a worker that is legitimately still processing a frame is never declared stalled and re-processed; only a genuinely dead worker's lock lapses. The integration test `server/src/__tests__/integration/crashRecovery.test.ts` validates that a `SIGKILL`ed worker's frame is recovered and completed by another worker.
+
+The Director also maintains the worker floor: if a crash or graceful retire drops the pool below `MIN_NODES`, the next tick spawns a replacement, so the crew never sits below the minimum for more than one drama interval.
 
 ## Testing
 

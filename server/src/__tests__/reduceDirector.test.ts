@@ -61,6 +61,22 @@ describe('reduceDirector', () => {
         expect(effects).not.toContainEqual({ type: 'spawn' });
     });
 
+    it('spawns to restore the minimum node floor after a crash drops the pool below it', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        // one node left (below min 2) with a shallow queue that would not trigger normal
+        // scale-up; the floor must be replenished regardless of queue depth.
+        const ctx = { ...baseCtx, nodeCount: 1, queueDepth: 0, remaining: 5, activeCount: 1 };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).toContainEqual({ type: 'spawn' });
+    });
+
+    it('does not spawn a floor replacement when already at the minimum', () => {
+        const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
+        const ctx = { ...baseCtx, nodeCount: 2, queueDepth: 0, remaining: 5, activeCount: 2 };
+        const { effects } = reduceDirector(running, { type: 'tick' }, ctx);
+        expect(effects).not.toContainEqual({ type: 'spawn' });
+    });
+
     it('scales down when draining and above min nodes', () => {
         const running: DirectorState = { cycle: 1, paused: false, phase: 'running' };
         const ctx = { ...baseCtx, queueDepth: 1, remaining: 2, activeCount: 1, nodeCount: 4 };
