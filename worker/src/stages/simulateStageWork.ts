@@ -1,25 +1,13 @@
-/** Runs a single frame through RENDERING then COMPOSITING, emitting progress after each tick. */
+/** Simulates one stage of frame work in fixed steps, publishing progress telemetry per step. */
 
 import type { FrameJobData, NodeState, Stage, TelemetryMsg } from '@demo/shared';
 import type { Job } from 'bullmq';
-import type { Redis } from 'ioredis';
 
 import { RENDER_STEPS } from '../constants.js';
 import { publishTelemetry } from '../telemetry/publishTelemetry.js';
+import type { ProcessDeps } from '../types.js';
 
-export interface ProcessDeps {
-    getCompleted: () => number;
-    nodeId: string;
-    pid: number;
-    publisher: Redis;
-    stageMs: number;
-}
-
-function sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function runStage(
+export async function simulateStageWork(
     job: Job<FrameJobData>,
     stage: Stage,
     state: NodeState,
@@ -39,12 +27,10 @@ async function runStage(
             stage,
             state,
         };
-        await job.updateProgress({ nodeId: deps.nodeId, pct, stage });
         publishTelemetry(deps.publisher, msg);
     }
 }
 
-export async function processFrame(job: Job<FrameJobData>, deps: ProcessDeps): Promise<void> {
-    await runStage(job, 'RENDERING', 'rendering', deps);
-    await runStage(job, 'COMPOSITING', 'compositing', deps);
+function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -196,3 +196,16 @@ npm run dev                 # concurrently: server + vite web (server forks work
 
 1. **Stalled-recovery timing** on the accelerated clock: validate `STALLED_INTERVAL_MS`/`LOCK_DURATION_MS` in the integration test before building UI polish. Soft-crash fallback documented above.
 2. Whether progress is carried via BullMQ `updateProgress` alone or the dedicated telemetry channel: resolve during the queue/telemetry slice (leaning: lifecycle via QueueEvents, node status + intra-job progress via pub/sub).
+
+## Post-implementation amendments (2026-07-02)
+
+Resolutions and deliberate deviations ratified after the build and the spec-conformance audit (`docs/audits/2026-07-02-spec-conformance.md`):
+
+1. **Open question 1 resolved:** real-`SIGKILL` recovery works on the accelerated clock; the soft-crash fallback was never needed and does not exist. `STALLED_INTERVAL_MS` landed at 2000 (tighter than the ~4000 sketched above) so recovery stays inside the 4-8s window with `LOCK_DURATION_MS` 4000.
+2. **Open question 2 resolved:** lifecycle rides QueueEvents (`added`/`completed`/`stalled`/`failed`); node status and intra-frame progress ride the `worker:telemetry` pub/sub channel exclusively. `updateProgress` is not used.
+3. **Transport sends full snapshots, not diffs:** at demo scale a snapshot is small enough that diffing buys nothing, and every message doubles as late-join state. The "diffs" wording above is superseded.
+4. **Shared contract package:** stage names, event types, queue name, and all wire types live in a fourth workspace, `shared/` (`@demo/shared`), instead of `server/src/constants|types/`, because worker and web consume the same contract.
+5. **Web state hook:** `state/useOrchestrator` merges the sketched `useWorldState` + `useCommands` (one socket serves both concerns).
+6. **Autoscale comparisons are strict** ("exceeds" / "drains below"), pinned by boundary unit tests.
+7. **Extra resilience tunables:** `JOB_ATTEMPTS` (20) and `MAX_STALLED_COUNT` (10) exist so a crashed frame re-queues instead of failing permanently; a frame that somehow exhausts them lands in `DONE` (so a cycle cannot deadlock) but carries a `failed` flag rendered as a red-bordered `FAILED` card, and the event log records `failed permanently`.
+8. **Operator kill bypasses pause:** pause freezes the Director's autonomous drama (seed/scale/crash); the manual `Kill a node` control still works while paused.

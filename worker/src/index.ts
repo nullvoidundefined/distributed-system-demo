@@ -5,13 +5,15 @@ import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 
 import {
+    DEFAULT_HEARTBEAT_INTERVAL_MS,
     DEFAULT_LOCK_DURATION_MS,
     DEFAULT_MAX_STALLED_COUNT,
     DEFAULT_STAGE_MS,
     DEFAULT_STALLED_INTERVAL_MS,
 } from './constants.js';
-import { processFrame } from './stages/processFrame.js';
+import { processFrame } from './processFrame.js';
 
+const heartbeatMs = Number(process.env.HEARTBEAT_INTERVAL_MS ?? DEFAULT_HEARTBEAT_INTERVAL_MS);
 const nodeId = process.env.NODE_ID ?? `node-${process.pid}`;
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const stageMs = Number(process.env.STAGE_MS ?? DEFAULT_STAGE_MS);
@@ -55,14 +57,32 @@ const worker = new Worker<FrameJobData>(
     },
 );
 
+let isProcessing = false;
+
+worker.on('active', () => {
+    isProcessing = true;
+});
+
 worker.on('completed', () => {
     completed += 1;
+    isProcessing = false;
+    publishIdle();
+});
+
+worker.on('failed', () => {
+    isProcessing = false;
     publishIdle();
 });
 
 worker.on('ready', publishIdle);
 
+// heartbeat: an idle worker keeps announcing itself; while processing, progress ticks cover it
+const heartbeatTimer = setInterval(() => {
+    if (!isProcessing) publishIdle();
+}, heartbeatMs);
+
 process.on('SIGTERM', () => {
+    clearInterval(heartbeatTimer);
     worker
         .close()
         .then(() => process.exit(0))

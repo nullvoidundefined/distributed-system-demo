@@ -6,7 +6,8 @@ import type { QueueEventInput } from './types.js';
 
 export function applyQueueEvent(state: WorldState, evt: QueueEventInput): WorldState {
     if (evt.kind === 'added') return addQueuedFrame(state, evt.frameId, evt.priority ?? false);
-    if (evt.kind === 'completed' || evt.kind === 'failed') return markFrameDone(state, evt.frameId);
+    if (evt.kind === 'completed') return markFrameDone(state, evt.frameId, false);
+    if (evt.kind === 'failed') return markFrameDone(state, evt.frameId, true);
     if (evt.kind === 'stalled') return requeueFrame(state, evt.frameId);
     return state;
 }
@@ -14,6 +15,7 @@ export function applyQueueEvent(state: WorldState, evt: QueueEventInput): WorldS
 function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): WorldState {
     const frame: Frame = {
         cycle: state.cycle,
+        failed: false,
         id: frameId,
         nodeId: null,
         pct: 0,
@@ -27,9 +29,16 @@ function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): 
     };
 }
 
-function markFrameDone(state: WorldState, frameId: string): WorldState {
+/** Both terminal outcomes land in DONE (so a cycle can always finish); failed keeps its own flag. */
+function markFrameDone(state: WorldState, frameId: string, failed: boolean): WorldState {
+    // DONE is terminal and each frame counts toward `done` exactly once. BullMQ delivers
+    // lifecycle events at least once, so a completed/failed event can repeat (false stall,
+    // retry); counting per event lets `done` overshoot `total`, driving the cycle's
+    // `total - done` completion gauge negative so it never resets. Ignore the duplicate.
+    const target = state.frames.find((frame) => frame.id === frameId);
+    if (!target || target.stage === 'DONE') return state;
     const frames = state.frames.map((frame) =>
-        frame.id === frameId ? { ...frame, pct: 100, stage: 'DONE' as const } : frame,
+        frame.id === frameId ? { ...frame, failed, pct: 100, stage: 'DONE' as const } : frame,
     );
     return { ...state, frames, totals: { ...state.totals, done: state.totals.done + 1 } };
 }

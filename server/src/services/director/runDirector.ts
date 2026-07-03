@@ -10,25 +10,34 @@ import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
 import type { WorldStore } from '../worldState/types.js';
 
 import { reduceDirector } from './reduceDirector.js';
-import type { DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
+import type { DirectorCtx, DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
 
-const CRASH_PROB_PER_TICK = 0.25;
-
-function idleCtx(): ReturnType<typeof buildCtx> {
-    return buildCtx(0, 0, 1, 0);
+interface ObservedCounts {
+    activeCount: number;
+    busyNodeIds: string[];
+    nodeCount: number;
+    queueDepth: number;
+    remaining: number;
 }
 
-function buildCtx(queueDepth: number, activeCount: number, remaining: number, nodeCount: number) {
+function idleCtx(): DirectorCtx {
+    return buildCtx({ activeCount: 0, busyNodeIds: [], nodeCount: 0, queueDepth: 0, remaining: 1 });
+}
+
+function buildCtx(observed: ObservedCounts): DirectorCtx {
     return {
-        activeCount,
+        activeCount: observed.activeCount,
         batchSize: TUNABLES.batchSize,
+        busyNodeIds: observed.busyNodeIds,
+        crashRoll: Math.random(),
         maxNodes: TUNABLES.maxNodes,
         minNodes: TUNABLES.minNodes,
-        nodeCount,
-        queueDepth,
-        remaining,
+        nodeCount: observed.nodeCount,
+        queueDepth: observed.queueDepth,
+        remaining: observed.remaining,
         scaleDownDepth: TUNABLES.scaleDownDepth,
         scaleUpDepth: TUNABLES.scaleUpDepth,
+        targetRoll: Math.random(),
     };
 }
 
@@ -94,6 +103,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
         if (effect.type === 'seed') await seed(effect.count);
         if (effect.type === 'spawn') spawnNode();
         if (effect.type === 'kill') retireIdleNode();
+        if (effect.type === 'crash') crashNode(effect.nodeId);
         if (effect.type === 'resetQueue') await resetCycle();
     }
 
@@ -101,14 +111,8 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
         for (const effect of effects) await applyEffect(effect);
     }
 
-    function maybeCrash(): void {
-        if (state.phase !== 'running' || Math.random() > CRASH_PROB_PER_TICK) return;
-        const busy = store
-            .get()
-            .nodes.filter((node) => node.state !== 'idle')
-            .map((node) => node.id);
-        if (busy.length <= 1) return;
-        const crashed = pool.crashRandom(busy);
+    function crashNode(nodeId: string): void {
+        const crashed = pool.crashRandom([nodeId]);
         if (crashed) {
             store.update((s) =>
                 appendEvent(s, 'danger', `${crashed} crashed (SIGKILL); frame orphaned`),
@@ -116,21 +120,28 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
         }
     }
 
+    function listBusyNodeIds(): string[] {
+        return store
+            .get()
+            .nodes.filter((node) => node.state !== 'idle')
+            .map((node) => node.id);
+    }
+
     async function tick(): Promise<void> {
         const counts = await queue.getJobCounts('waiting', 'active', 'prioritized');
         const world = store.get();
         const remaining = world.totals.total - world.totals.done;
-        const ctx = buildCtx(
-            (counts.waiting ?? 0) + (counts.prioritized ?? 0),
-            counts.active ?? 0,
-            state.phase === 'seeding' ? 1 : remaining,
-            pool.size(),
-        );
+        const ctx = buildCtx({
+            activeCount: counts.active ?? 0,
+            busyNodeIds: listBusyNodeIds(),
+            nodeCount: pool.size(),
+            queueDepth: (counts.waiting ?? 0) + (counts.prioritized ?? 0),
+            remaining: state.phase === 'seeding' ? 1 : remaining,
+        });
         const result = reduceDirector(state, { type: 'tick' }, ctx);
         state = result.state;
         store.update((s) => ({ ...s, cycle: state.cycle, phase: displayPhase(state) }));
         await applyEffects(result.effects);
-        maybeCrash();
         schedule();
     }
 

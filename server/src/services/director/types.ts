@@ -11,6 +11,8 @@ export interface DirectorState {
 export interface DirectorCtx {
     activeCount: number;
     batchSize: number;
+    busyNodeIds: string[];
+    crashRoll: number;
     maxNodes: number;
     minNodes: number;
     nodeCount: number;
@@ -18,13 +20,18 @@ export interface DirectorCtx {
     remaining: number;
     scaleDownDepth: number;
     scaleUpDepth: number;
+    targetRoll: number;
 }
 
 export type DirectorAction =
     { type: 'tick' } | { type: 'pause' } | { type: 'resume' } | { type: 'reset' };
 
 export type DirectorEffect =
-    { type: 'seed'; count: number } | { type: 'spawn' } | { type: 'kill' } | { type: 'resetQueue' };
+    | { type: 'seed'; count: number }
+    | { type: 'spawn' }
+    | { type: 'kill' }
+    | { type: 'crash'; nodeId: string }
+    | { type: 'resetQueue' };
 
 export interface DirectorRuntime {
     dispatch: (action: DirectorAction) => Promise<void>;

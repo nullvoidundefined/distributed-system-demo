@@ -16,6 +16,7 @@ export interface Command {
 
 export interface Frame {
     cycle: number;
+    failed: boolean;
     id: string;
     nodeId: string | null;
     pct: number;

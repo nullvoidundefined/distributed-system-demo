@@ -50,6 +50,26 @@ describe('worldState reducers', () => {
         expect(world.nodes.find((node) => node.id === 'node-1')?.state).toBe('rendering');
     });
 
+    it('applyTelemetry does not resurrect a DONE frame when late telemetry loses the race', () => {
+        let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'completed', frameId: 'f1' });
+        // The frame's final progress telemetry arrives after the completed event
+        // (the two channels are unordered); it must not drag the frame out of DONE.
+        world = applyTelemetry(world, {
+            completed: 1,
+            frameId: 'f1',
+            nodeId: 'node-1',
+            pct: 100,
+            pid: 10,
+            priority: false,
+            stage: 'COMPOSITING',
+            state: 'compositing',
+        });
+        expect(world.frames[0].stage).toBe('DONE');
+        // The node telemetry itself is still valid and must still be recorded.
+        expect(world.nodes.find((node) => node.id === 'node-1')?.completed).toBe(1);
+    });
+
     it('applyQueueEvent completed sets DONE and increments done total', () => {
         let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
         world = applyQueueEvent(world, { kind: 'completed', frameId: 'f1' });
@@ -57,11 +77,37 @@ describe('worldState reducers', () => {
         expect(world.totals.done).toBe(1);
     });
 
+    it('applyQueueEvent completed counts a frame done exactly once even if it fires twice', () => {
+        // BullMQ has at-least-once semantics; a false stall can re-process and re-complete
+        // a job. done must count each frame once, or it overshoots total and the cycle
+        // (which resets when total - done reaches 0) can never complete.
+        let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'completed', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'completed', frameId: 'f1' });
+        expect(world.totals.done).toBe(1);
+        expect(world.frames.filter((frame) => frame.stage === 'DONE')).toHaveLength(1);
+    });
+
+    it('applyQueueEvent completed for an unknown frame does not inflate done', () => {
+        const world = applyQueueEvent(emptyWorld(1), { kind: 'completed', frameId: 'ghost' });
+        expect(world.totals.done).toBe(0);
+    });
+
     it('applyQueueEvent failed is terminal too: DONE and done incremented so the cycle can finish', () => {
         let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
         world = applyQueueEvent(world, { kind: 'failed', frameId: 'f1' });
         expect(world.frames[0].stage).toBe('DONE');
         expect(world.totals.done).toBe(1);
+    });
+
+    it('applyQueueEvent failed marks the frame failed; completed does not', () => {
+        let world = applyQueueEvent(emptyWorld(1), { kind: 'added', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'added', frameId: 'f2' });
+        expect(world.frames.map((frame) => frame.failed)).toEqual([false, false]);
+        world = applyQueueEvent(world, { kind: 'failed', frameId: 'f1' });
+        world = applyQueueEvent(world, { kind: 'completed', frameId: 'f2' });
+        expect(world.frames.find((frame) => frame.id === 'f1')?.failed).toBe(true);
+        expect(world.frames.find((frame) => frame.id === 'f2')?.failed).toBe(false);
     });
 
     it('applyQueueEvent stalled returns the frame to QUEUED and clears its node', () => {

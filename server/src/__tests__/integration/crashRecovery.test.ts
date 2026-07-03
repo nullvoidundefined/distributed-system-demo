@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
-import { QUEUE_NAME } from '@demo/shared';
+import { QUEUE_NAME, TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
 
 const WORKER_ENTRY = fileURLToPath(new URL('../../../../worker/src/index.ts', import.meta.url));
 const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
@@ -11,6 +11,7 @@ const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 let queue: Queue;
 let events: QueueEvents;
 let conn: Redis;
+let subscriber: Redis;
 const children: ChildProcess[] = [];
 
 function spawnWorker(nodeId: string): ChildProcess {
@@ -37,6 +38,8 @@ beforeEach(async () => {
         connection: new Redis(url, { maxRetriesPerRequest: null }),
     });
     await events.waitUntilReady();
+    subscriber = new Redis(url);
+    await subscriber.subscribe(TELEMETRY_CHANNEL);
 });
 
 afterEach(async () => {
@@ -45,10 +48,19 @@ afterEach(async () => {
     await queue.obliterate({ force: true }).catch(() => undefined);
     await events.close();
     await queue.close();
+    await subscriber.quit();
     await conn.quit();
 });
 
-test('a frame orphaned when a worker is SIGKILLed mid-job is recovered by another worker', async () => {
+test('a frame orphaned when a worker is SIGKILLed mid-job is re-queued and completed by another worker', async () => {
+    const ownerByFrame = new Map<string, string>();
+    subscriber.on('message', (_channel, raw) => {
+        const msg = JSON.parse(raw) as TelemetryMsg;
+        if (msg.frameId) ownerByFrame.set(msg.frameId, msg.nodeId);
+    });
+    const stalledFrameIds: string[] = [];
+    events.on('stalled', ({ jobId }) => stalledFrameIds.push(jobId));
+
     const doomed = spawnWorker('node-doomed'); // healthy worker, killed externally below
     await new Promise((resolve) => setTimeout(resolve, 600));
     await queue.add(
@@ -59,6 +71,7 @@ test('a frame orphaned when a worker is SIGKILLed mid-job is recovered by anothe
 
     // let the worker pick up the frame and begin processing, then hard-kill it mid-job
     await new Promise((resolve) => setTimeout(resolve, 1500));
+    expect(ownerByFrame.get('f1')).toBe('node-doomed'); // mid-job precondition, not just a sleep
     doomed.kill('SIGKILL');
     spawnWorker('node-healthy');
 
@@ -66,4 +79,6 @@ test('a frame orphaned when a worker is SIGKILLed mid-job is recovered by anothe
         events.on('completed', ({ jobId }) => resolve(jobId));
     });
     expect(completedId).toBe('f1');
+    expect(stalledFrameIds).toContain('f1'); // orphaned frame was re-queued via stalled detection
+    expect(ownerByFrame.get('f1')).toBe('node-healthy'); // completed by the surviving worker
 }, 25000);

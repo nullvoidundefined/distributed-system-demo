@@ -3,13 +3,22 @@
 import type { Frame } from '@demo/shared';
 import { STAGES } from '@demo/shared';
 
+import { useFlipAnimation } from '../../state/useFlipAnimation';
+
 import styles from './KanbanBoard.module.scss';
 
 interface KanbanBoardProps {
     frames: Frame[];
 }
 
+function cardClassName(frame: Frame): string {
+    if (frame.failed) return `${styles.card} ${styles.failed}`;
+    if (frame.priority) return `${styles.card} ${styles.priority}`;
+    return styles.card;
+}
+
 export function KanbanBoard({ frames }: KanbanBoardProps) {
+    const registerFlipElement = useFlipAnimation<HTMLLIElement>();
     return (
         <section className={styles.board} aria-label="render pipeline">
             {STAGES.map((stage) => {
@@ -25,10 +34,19 @@ export function KanbanBoard({ frames }: KanbanBoardProps) {
                             {columnFrames.map((frame) => (
                                 <li
                                     key={frame.id}
-                                    className={`${styles.card} ${frame.priority ? styles.priority : ''}`}
+                                    ref={registerFlipElement(frame.id)}
+                                    className={cardClassName(frame)}
                                 >
                                     <span>{frame.id}</span>
-                                    {frame.priority && (
+                                    {frame.failed && (
+                                        <span
+                                            className={styles.failedBadge}
+                                            aria-label="failed permanently"
+                                        >
+                                            failed
+                                        </span>
+                                    )}
+                                    {frame.priority && !frame.failed && (
                                         <span className={styles.badge} aria-label="high priority">
                                             priority
                                         </span>
