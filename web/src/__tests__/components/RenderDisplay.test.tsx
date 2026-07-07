@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Frame, Stage } from '@demo/shared';
-import { KanbanBoard } from '../../components/KanbanBoard/KanbanBoard.js';
+import { RenderDisplay } from '../../components/RenderDisplay/RenderDisplay.js';
 
 function queuedFrame(id: string, priority: boolean): Frame {
     return { cycle: 1, failed: false, id, nodeId: null, pct: 0, priority, stage: 'QUEUED' };
@@ -16,10 +16,10 @@ function getColumn(stage: Stage): HTMLElement {
     return heading.closest('div')!;
 }
 
-describe('KanbanBoard', () => {
+describe('RenderDisplay', () => {
     it('renders priority frames ahead of normal frames within a column', () => {
         render(
-            <KanbanBoard
+            <RenderDisplay
                 frames={[queuedFrame('f-normal', false), queuedFrame('f-priority', true)]}
             />,
         );
@@ -32,7 +32,7 @@ describe('KanbanBoard', () => {
 
     it('places each frame in the column matching its stage', () => {
         render(
-            <KanbanBoard
+            <RenderDisplay
                 frames={[
                     stagedFrame('f-queued', 'QUEUED', null),
                     stagedFrame('f-rendering', 'RENDERING', 'node-1'),
@@ -49,7 +49,7 @@ describe('KanbanBoard', () => {
 
     it('shows a priority badge only on high-priority frames', () => {
         render(
-            <KanbanBoard
+            <RenderDisplay
                 frames={[queuedFrame('f-normal', false), queuedFrame('f-priority', true)]}
             />,
         );
@@ -60,7 +60,7 @@ describe('KanbanBoard', () => {
 
     it('marks a permanently failed frame with a failed badge in the DONE column', () => {
         render(
-            <KanbanBoard
+            <RenderDisplay
                 frames={[
                     { ...stagedFrame('f-failed', 'DONE', 'node-2'), failed: true },
                     stagedFrame('f-ok', 'DONE', null),
@@ -75,7 +75,7 @@ describe('KanbanBoard', () => {
     });
 
     it('tags in-flight cards with the owning node', () => {
-        render(<KanbanBoard frames={[stagedFrame('f-busy', 'RENDERING', 'node-3')]} />);
+        render(<RenderDisplay frames={[stagedFrame('f-busy', 'RENDERING', 'node-3')]} />);
         const card = screen.getByText('f-busy').closest('li')!;
         expect(within(card).getByText('node-3')).toBeDefined();
     });

@@ -1,4 +1,4 @@
-/** Orchestrator bootstrap: Redis, queue, queue-events wiring, node pool, director, and WebSocket server. */
+/** Orchestrator bootstrap: Redis, queue, queue-events wiring, node pool, orchestrator, and WebSocket server. */
 
 import { createServer } from 'node:http';
 
@@ -10,21 +10,21 @@ import { createRedisConnection } from './clients/redis/createRedisConnection.js'
 import { TUNABLES } from './config/tunables.js';
 import { createQueueEvents } from './queue/createQueueEvents.js';
 import { createRenderQueue } from './queue/createRenderQueue.js';
-import { runDirector } from './services/director/runDirector.js';
 import { createNodePool } from './services/nodePool/createNodePool.js';
+import { runOrchestrator } from './services/orchestrator/runOrchestrator.js';
+import { appendEvent } from './services/renderState/appendEvent.js';
+import { applyNodeCrashed } from './services/renderState/applyNodeCrashed.js';
+import { applyNodeSpawning } from './services/renderState/applyNodeSpawning.js';
+import { applyQueueEvent } from './services/renderState/applyQueueEvent.js';
+import { createRenderStore } from './services/renderState/createRenderStore.js';
+import { removeNode } from './services/renderState/removeNode.js';
 import { subscribeTelemetry } from './services/telemetry/subscribeTelemetry.js';
-import { appendEvent } from './services/worldState/appendEvent.js';
-import { applyNodeCrashed } from './services/worldState/applyNodeCrashed.js';
-import { applyNodeSpawning } from './services/worldState/applyNodeSpawning.js';
-import { applyQueueEvent } from './services/worldState/applyQueueEvent.js';
-import { createWorldStore } from './services/worldState/createWorldStore.js';
-import { removeNode } from './services/worldState/removeNode.js';
 import { createBroadcaster } from './websocket/createBroadcaster.js';
 import { handleCommand } from './websocket/handleCommand.js';
 
 const CRASHED_NODE_LINGER_MS = 1500;
 
-const store = createWorldStore();
+const store = createRenderStore();
 const redisForQueue = createRedisConnection();
 const redisForEvents = createRedisConnection();
 const redisForTelemetry = createRedisConnection();
@@ -49,11 +49,11 @@ for (let i = 0; i < TUNABLES.minNodes; i += 1) {
     store.update((s) => applyNodeSpawning(s, id, pid));
 }
 
-const director = runDirector(queue, pool, store);
+const orchestrator = runOrchestrator(queue, pool, store);
 
 queueEvents.on('added', ({ jobId }) => {
     store.update((s) =>
-        applyQueueEvent(s, { frameId: jobId, kind: 'added', priority: director.priorityOf(jobId) }),
+        applyQueueEvent(s, { frameId: jobId, kind: 'added', priority: orchestrator.priorityOf(jobId) }),
     );
 });
 queueEvents.on('completed', ({ jobId }) => {
@@ -102,17 +102,17 @@ wss.on('connection', (socket) => {
             return; // ignore malformed client input rather than crashing the orchestrator
         }
         handleCommand(cmd, {
-            inject: (count) => void director.seed(count),
-            killNode: () => director.killNodeNow(),
-            pause: () => void director.dispatch({ type: 'pause' }),
-            reset: () => void director.dispatch({ type: 'reset' }),
-            resume: () => void director.dispatch({ type: 'resume' }),
+            inject: (count) => void orchestrator.seed(count),
+            killNode: () => orchestrator.killNodeNow(),
+            pause: () => void orchestrator.dispatch({ type: 'pause' }),
+            reset: () => void orchestrator.dispatch({ type: 'reset' }),
+            resume: () => void orchestrator.dispatch({ type: 'resume' }),
         });
     });
 });
 
 async function shutdown(): Promise<void> {
-    director.stop();
+    orchestrator.stop();
     pool.shutdown();
     await Promise.allSettled([
         queue.close(),

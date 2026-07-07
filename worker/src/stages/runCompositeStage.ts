@@ -1,4 +1,4 @@
-/** Composite phase: the second half of a frame's simulated work. */
+/** Composite status: the second half of a frame's simulated work. */
 
 import type { FrameJobData } from '@demo/shared';
 import type { Job } from 'bullmq';

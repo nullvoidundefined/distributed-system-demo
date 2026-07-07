@@ -1,11 +1,11 @@
-/** Folds a worker telemetry snapshot into the WorldState: updates the node and its owning frame. */
+/** Folds a worker telemetry snapshot into the RenderState: updates the node and its owning frame. */
 
-import type { TelemetryMsg, WorkerNode, WorldState } from '@demo/shared';
+import type { RenderNode, RenderState, TelemetryMsg } from '@demo/shared';
 
 import { upsertNode } from './upsertNode.js';
 
-export function applyTelemetry(state: WorldState, msg: TelemetryMsg): WorldState {
-    const node: WorkerNode = {
+export function applyTelemetry(state: RenderState, msg: TelemetryMsg): RenderState {
+    const node: RenderNode = {
         completed: msg.completed,
         frameId: msg.frameId,
         id: msg.nodeId,

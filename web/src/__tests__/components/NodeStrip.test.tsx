@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { WorkerNode } from '@demo/shared';
+import type { RenderNode } from '@demo/shared';
 import { NodeStrip } from '../../components/NodeStrip/NodeStrip.js';
 
-function workerNode(overrides: Partial<WorkerNode>): WorkerNode {
+function renderNode(overrides: Partial<RenderNode>): RenderNode {
     return {
         completed: 0,
         frameId: null,
@@ -20,8 +20,8 @@ describe('NodeStrip', () => {
         render(
             <NodeStrip
                 nodes={[
-                    workerNode({ id: 'node-1', pid: 101 }),
-                    workerNode({
+                    renderNode({ id: 'node-1', pid: 101 }),
+                    renderNode({
                         completed: 3,
                         frameId: 'f7',
                         id: 'node-2',
@@ -43,7 +43,7 @@ describe('NodeStrip', () => {
     });
 
     it('shows idle in place of a frame when the node holds none', () => {
-        render(<NodeStrip nodes={[workerNode({ id: 'node-1', state: 'spawning' })]} />);
+        render(<NodeStrip nodes={[renderNode({ id: 'node-1', state: 'spawning' })]} />);
         expect(screen.getByText('idle')).toBeDefined();
         expect(screen.getByText('spawning')).toBeDefined();
     });

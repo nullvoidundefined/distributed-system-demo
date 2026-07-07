@@ -1,14 +1,14 @@
-/** Types for the Director: the pure cycle-engine state machine and its effects. */
+/** Types for the Orchestrator: the pure cycle-engine state machine and its effects. */
 
-export type DirectorPhase = 'seeding' | 'running' | 'complete';
+export type OrchestratorStatus = 'seeding' | 'running' | 'complete';
 
-export interface DirectorState {
+export interface OrchestratorState {
     cycle: number;
     paused: boolean;
-    phase: DirectorPhase;
+    status: OrchestratorStatus;
 }
 
-export interface DirectorCtx {
+export interface OrchestratorCtx {
     activeCount: number;
     batchSize: number;
     busyNodeIds: string[];
@@ -23,18 +23,18 @@ export interface DirectorCtx {
     targetRoll: number;
 }
 
-export type DirectorAction =
+export type OrchestratorAction =
     { type: 'tick' } | { type: 'pause' } | { type: 'resume' } | { type: 'reset' };
 
-export type DirectorEffect =
+export type OrchestratorEffect =
     | { type: 'seed'; count: number }
     | { type: 'spawn' }
     | { type: 'kill' }
     | { type: 'crash'; nodeId: string }
     | { type: 'resetQueue' };
 
-export interface DirectorRuntime {
-    dispatch: (action: DirectorAction) => Promise<void>;
+export interface OrchestratorRuntime {
+    dispatch: (action: OrchestratorAction) => Promise<void>;
     killNodeNow: () => void;
     priorityOf: (frameId: string) => boolean;
     seed: (count: number) => Promise<void>;

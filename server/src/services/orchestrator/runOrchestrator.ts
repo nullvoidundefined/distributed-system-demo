@@ -1,16 +1,21 @@
-/** Drives the Director: randomized ticks, applies effects to the queue and node pool, logs events. */
+/** Drives the Orchestrator: randomized ticks, applies effects to the queue and node pool, logs events. */
 
-import type { WorldState } from '@demo/shared';
+import type { RenderState } from '@demo/shared';
 import type { Queue } from 'bullmq';
 
 import { TUNABLES } from '../../config/tunables.js';
 import type { NodePool } from '../nodePool/types.js';
-import { appendEvent } from '../worldState/appendEvent.js';
-import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
-import type { WorldStore } from '../worldState/types.js';
+import { appendEvent } from '../renderState/appendEvent.js';
+import { applyNodeSpawning } from '../renderState/applyNodeSpawning.js';
+import type { RenderStore } from '../renderState/types.js';
 
-import { reduceDirector } from './reduceDirector.js';
-import type { DirectorCtx, DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
+import { reduceOrchestrator } from './reduceOrchestrator.js';
+import type {
+    OrchestratorCtx,
+    OrchestratorEffect,
+    OrchestratorRuntime,
+    OrchestratorState,
+} from './types.js';
 
 interface ObservedCounts {
     activeCount: number;
@@ -20,11 +25,14 @@ interface ObservedCounts {
     remaining: number;
 }
 
-function idleCtx(): DirectorCtx {
+const HIGH_QUEUE_PRIORITY = 1;
+const NORMAL_QUEUE_PRIORITY = 5;
+
+function idleCtx(): OrchestratorCtx {
     return buildCtx({ activeCount: 0, busyNodeIds: [], nodeCount: 0, queueDepth: 0, remaining: 1 });
 }
 
-function buildCtx(observed: ObservedCounts): DirectorCtx {
+function buildCtx(observed: ObservedCounts): OrchestratorCtx {
     return {
         activeCount: observed.activeCount,
         batchSize: TUNABLES.batchSize,
@@ -41,12 +49,16 @@ function buildCtx(observed: ObservedCounts): DirectorCtx {
     };
 }
 
-function displayPhase(state: DirectorState): WorldState['phase'] {
-    return state.paused ? 'paused' : state.phase;
+function displayStatus(state: OrchestratorState): RenderState['status'] {
+    return state.paused ? 'paused' : state.status;
 }
 
-export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): DirectorRuntime {
-    let state: DirectorState = { cycle: 1, paused: false, phase: 'seeding' };
+export function runOrchestrator(
+    queue: Queue,
+    pool: NodePool,
+    store: RenderStore,
+): OrchestratorRuntime {
+    let state: OrchestratorState = { cycle: 1, paused: false, status: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
     const priorityById = new Map<string, boolean>();
@@ -60,7 +72,11 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
             await queue.add(
                 'frame',
                 { cycle: state.cycle, frameId, priority },
-                { attempts: TUNABLES.jobAttempts, jobId: frameId, priority: priority ? 1 : 5 },
+                {
+                    attempts: TUNABLES.jobAttempts,
+                    jobId: frameId,
+                    priority: priority ? HIGH_QUEUE_PRIORITY : NORMAL_QUEUE_PRIORITY,
+                },
             );
         }
         store.update((s) =>
@@ -93,13 +109,13 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
             ...s,
             cycle: state.cycle,
             frames: [],
-            phase: 'seeding',
+            status: 'seeding',
             totals: { done: 0, total: 0 },
         }));
         store.update((s) => appendEvent(s, 'info', `cycle ${state.cycle} starting`));
     }
 
-    async function applyEffect(effect: DirectorEffect): Promise<void> {
+    async function applyEffect(effect: OrchestratorEffect): Promise<void> {
         if (effect.type === 'seed') await seed(effect.count);
         if (effect.type === 'spawn') spawnNode();
         if (effect.type === 'kill') retireIdleNode();
@@ -107,7 +123,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
         if (effect.type === 'resetQueue') await resetCycle();
     }
 
-    async function applyEffects(effects: DirectorEffect[]): Promise<void> {
+    async function applyEffects(effects: OrchestratorEffect[]): Promise<void> {
         for (const effect of effects) await applyEffect(effect);
     }
 
@@ -129,18 +145,18 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
 
     async function tick(): Promise<void> {
         const counts = await queue.getJobCounts('waiting', 'active', 'prioritized');
-        const world = store.get();
-        const remaining = world.totals.total - world.totals.done;
+        const renderState = store.get();
+        const remaining = renderState.totals.total - renderState.totals.done;
         const ctx = buildCtx({
             activeCount: counts.active ?? 0,
             busyNodeIds: listBusyNodeIds(),
             nodeCount: pool.size(),
             queueDepth: (counts.waiting ?? 0) + (counts.prioritized ?? 0),
-            remaining: state.phase === 'seeding' ? 1 : remaining,
+            remaining: state.status === 'seeding' ? 1 : remaining,
         });
-        const result = reduceDirector(state, { type: 'tick' }, ctx);
+        const result = reduceOrchestrator(state, { type: 'tick' }, ctx);
         state = result.state;
-        store.update((s) => ({ ...s, cycle: state.cycle, phase: displayPhase(state) }));
+        store.update((s) => ({ ...s, cycle: state.cycle, status: displayStatus(state) }));
         await applyEffects(result.effects);
         schedule();
     }
@@ -155,9 +171,9 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
 
     return {
         dispatch: async (action) => {
-            const result = reduceDirector(state, action, idleCtx());
+            const result = reduceOrchestrator(state, action, idleCtx());
             state = result.state;
-            store.update((s) => ({ ...s, phase: displayPhase(state) }));
+            store.update((s) => ({ ...s, status: displayStatus(state) }));
             await applyEffects(result.effects);
         },
         killNodeNow: () => {

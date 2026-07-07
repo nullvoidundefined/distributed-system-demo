@@ -1,33 +1,33 @@
 /** Pure cycle-engine reducer: given state, action, and observed context, returns next state and effects. */
 
-import type { DirectorAction, DirectorCtx, DirectorEffect, DirectorState } from './types.js';
+import type { OrchestratorAction, OrchestratorCtx, OrchestratorEffect, OrchestratorState } from './types.js';
 
 interface Reduced {
-    effects: DirectorEffect[];
-    state: DirectorState;
+    effects: OrchestratorEffect[];
+    state: OrchestratorState;
 }
 
 const CRASH_PROB_PER_TICK = 0.25;
 
-function seed(state: DirectorState, ctx: DirectorCtx): Reduced {
+function seed(state: OrchestratorState, ctx: OrchestratorCtx): Reduced {
     return {
         effects: [{ count: ctx.batchSize, type: 'seed' }],
-        state: { ...state, phase: 'running' },
+        state: { ...state, status: 'running' },
     };
 }
 
-function reset(state: DirectorState): Reduced {
+function reset(state: OrchestratorState): Reduced {
     return {
         effects: [{ type: 'resetQueue' }],
-        state: { ...state, cycle: state.cycle + 1, phase: 'seeding' },
+        state: { ...state, cycle: state.cycle + 1, status: 'seeding' },
     };
 }
 
-function run(state: DirectorState, ctx: DirectorCtx): Reduced {
+function run(state: OrchestratorState, ctx: OrchestratorCtx): Reduced {
     if (ctx.remaining === 0) {
-        return { effects: [], state: { ...state, phase: 'complete' } };
+        return { effects: [], state: { ...state, status: 'complete' } };
     }
-    const effects: DirectorEffect[] = [];
+    const effects: OrchestratorEffect[] = [];
     if (ctx.nodeCount < ctx.minNodes) {
         // Replenish the floor after a crash or graceful retire drops the pool below the
         // minimum; the crew is guaranteed regardless of queue depth. One spawn per tick
@@ -43,23 +43,23 @@ function run(state: DirectorState, ctx: DirectorCtx): Reduced {
     return { effects, state };
 }
 
-function selectCrashTarget(ctx: DirectorCtx): string | null {
+function selectCrashTarget(ctx: OrchestratorCtx): string | null {
     const { busyNodeIds, crashRoll, targetRoll } = ctx;
     if (crashRoll >= CRASH_PROB_PER_TICK || busyNodeIds.length <= 1) return null;
     const index = Math.min(busyNodeIds.length - 1, Math.floor(targetRoll * busyNodeIds.length));
     return busyNodeIds[index];
 }
 
-export function reduceDirector(
-    state: DirectorState,
-    action: DirectorAction,
-    ctx: DirectorCtx,
+export function reduceOrchestrator(
+    state: OrchestratorState,
+    action: OrchestratorAction,
+    ctx: OrchestratorCtx,
 ): Reduced {
     if (action.type === 'pause') return { effects: [], state: { ...state, paused: true } };
     if (action.type === 'resume') return { effects: [], state: { ...state, paused: false } };
     if (action.type === 'reset') return reset(state);
     if (state.paused) return { effects: [], state };
-    if (state.phase === 'seeding') return seed(state, ctx);
-    if (state.phase === 'complete') return reset(state);
+    if (state.status === 'seeding') return seed(state, ctx);
+    if (state.status === 'complete') return reset(state);
     return run(state, ctx);
 }

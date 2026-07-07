@@ -1,17 +1,17 @@
 /** Operator controls: pause/resume, inject frames, kill a node, reset the cycle. */
 
-import type { Command, WorldState } from '@demo/shared';
+import type { Command, RenderState } from '@demo/shared';
 
 import styles from './ControlBar.module.scss';
 
 interface ControlBarProps {
     disabled: boolean;
     onCommand: (cmd: Command) => void;
-    phase: WorldState['phase'];
+    status: RenderState['status'];
 }
 
-export function ControlBar({ disabled, onCommand, phase }: ControlBarProps) {
-    const paused = phase === 'paused';
+export function ControlBar({ disabled, onCommand, status }: ControlBarProps) {
+    const paused = status === 'paused';
     return (
         <div className={styles.bar} role="toolbar" aria-label="Operator controls">
             <button
