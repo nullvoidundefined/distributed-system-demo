@@ -1,13 +1,13 @@
 /** Operator controls: pause/resume, inject frames, kill a node, reset the cycle. */
 
-import type { Command, WorldState } from '@demo/shared';
+import type { Command, RenderState } from '@demo/shared';
 
 import styles from './ControlBar.module.scss';
 
 interface ControlBarProps {
     disabled: boolean;
     onCommand: (cmd: Command) => void;
-    phase: WorldState['phase'];
+    phase: RenderState['phase'];
 }
 
 export function ControlBar({ disabled, onCommand, phase }: ControlBarProps) {

@@ -8,7 +8,7 @@ import { NodeStrip } from './components/NodeStrip/NodeStrip.js';
 import { useOrchestrator } from './state/useOrchestrator.js';
 
 export function App() {
-    const { send, status, world } = useOrchestrator();
+    const { send, status, renderState } = useOrchestrator();
     const connected = status === 'open';
     return (
         <main className={styles.app}>
@@ -17,10 +17,10 @@ export function App() {
                     Render Farm <span className={styles.dim}>distributed demo</span>
                 </h1>
                 <p className={styles.stats}>
-                    Cycle #{world.cycle} · {world.totals.done}/{world.totals.total} frames ·{' '}
-                    {world.nodes.length} nodes · {world.phase}
+                    Cycle #{renderState.cycle} · {renderState.totals.done}/{renderState.totals.total} frames ·{' '}
+                    {renderState.nodes.length} nodes · {renderState.phase}
                 </p>
-                <ControlBar phase={world.phase} disabled={!connected} onCommand={send} />
+                <ControlBar phase={renderState.phase} disabled={!connected} onCommand={send} />
             </header>
             {!connected && (
                 <p className={styles.banner} role="status">
@@ -29,9 +29,9 @@ export function App() {
                         : 'Disconnected. Reconnecting…'}
                 </p>
             )}
-            <KanbanBoard frames={world.frames} />
-            <NodeStrip nodes={world.nodes} />
-            <EventLog events={world.events} />
+            <KanbanBoard frames={renderState.frames} />
+            <NodeStrip nodes={renderState.nodes} />
+            <EventLog events={renderState.events} />
         </main>
     );
 }

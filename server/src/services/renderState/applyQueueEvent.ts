@@ -1,10 +1,10 @@
-/** Folds a BullMQ queue-lifecycle event into the WorldState: moves a frame between stages. */
+/** Folds a BullMQ queue-lifecycle event into the RenderState: moves a frame between stages. */
 
-import type { Frame, WorldState } from '@demo/shared';
+import type { Frame, RenderState } from '@demo/shared';
 
 import type { QueueEventInput } from './types.js';
 
-export function applyQueueEvent(state: WorldState, evt: QueueEventInput): WorldState {
+export function applyQueueEvent(state: RenderState, evt: QueueEventInput): RenderState {
     if (evt.kind === 'added') return addQueuedFrame(state, evt.frameId, evt.priority ?? false);
     if (evt.kind === 'completed') return markFrameDone(state, evt.frameId, false);
     if (evt.kind === 'failed') return markFrameDone(state, evt.frameId, true);
@@ -12,7 +12,7 @@ export function applyQueueEvent(state: WorldState, evt: QueueEventInput): WorldS
     return state;
 }
 
-function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): WorldState {
+function addQueuedFrame(state: RenderState, frameId: string, priority: boolean): RenderState {
     const frame: Frame = {
         cycle: state.cycle,
         failed: false,
@@ -30,7 +30,7 @@ function addQueuedFrame(state: WorldState, frameId: string, priority: boolean): 
 }
 
 /** Both terminal outcomes land in DONE (so a cycle can always finish); failed keeps its own flag. */
-function markFrameDone(state: WorldState, frameId: string, failed: boolean): WorldState {
+function markFrameDone(state: RenderState, frameId: string, failed: boolean): RenderState {
     // DONE is terminal and each frame counts toward `done` exactly once. BullMQ delivers
     // lifecycle events at least once, so a completed/failed event can repeat (false stall,
     // retry); counting per event lets `done` overshoot `total`, driving the cycle's
@@ -43,7 +43,7 @@ function markFrameDone(state: WorldState, frameId: string, failed: boolean): Wor
     return { ...state, frames, totals: { ...state.totals, done: state.totals.done + 1 } };
 }
 
-function requeueFrame(state: WorldState, frameId: string): WorldState {
+function requeueFrame(state: RenderState, frameId: string): RenderState {
     const frames = state.frames.map((frame) =>
         frame.id === frameId ? { ...frame, nodeId: null, pct: 0, stage: 'QUEUED' as const } : frame,
     );

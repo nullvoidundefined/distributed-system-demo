@@ -1,13 +1,13 @@
 /** Drives the Director: randomized ticks, applies effects to the queue and node pool, logs events. */
 
-import type { WorldState } from '@demo/shared';
+import type { RenderState } from '@demo/shared';
 import type { Queue } from 'bullmq';
 
 import { TUNABLES } from '../../config/tunables.js';
 import type { NodePool } from '../nodePool/types.js';
-import { appendEvent } from '../worldState/appendEvent.js';
-import { applyNodeSpawning } from '../worldState/applyNodeSpawning.js';
-import type { WorldStore } from '../worldState/types.js';
+import { appendEvent } from '../renderState/appendEvent.js';
+import { applyNodeSpawning } from '../renderState/applyNodeSpawning.js';
+import type { RenderStore } from '../renderState/types.js';
 
 import { reduceDirector } from './reduceDirector.js';
 import type { DirectorCtx, DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
@@ -41,11 +41,11 @@ function buildCtx(observed: ObservedCounts): DirectorCtx {
     };
 }
 
-function displayPhase(state: DirectorState): WorldState['phase'] {
+function displayPhase(state: DirectorState): RenderState['phase'] {
     return state.paused ? 'paused' : state.phase;
 }
 
-export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): DirectorRuntime {
+export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): DirectorRuntime {
     let state: DirectorState = { cycle: 1, paused: false, phase: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
@@ -129,8 +129,8 @@ export function runDirector(queue: Queue, pool: NodePool, store: WorldStore): Di
 
     async function tick(): Promise<void> {
         const counts = await queue.getJobCounts('waiting', 'active', 'prioritized');
-        const world = store.get();
-        const remaining = world.totals.total - world.totals.done;
+        const renderState = store.get();
+        const remaining = renderState.totals.total - renderState.totals.done;
         const ctx = buildCtx({
             activeCount: counts.active ?? 0,
             busyNodeIds: listBusyNodeIds(),

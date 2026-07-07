@@ -57,7 +57,7 @@ export interface WorkerNode {
     state: NodeState;
 }
 
-export interface WorldState {
+export interface RenderState {
     cycle: number;
     events: LogEvent[];
     frames: Frame[];

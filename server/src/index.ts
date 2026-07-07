@@ -13,18 +13,18 @@ import { createRenderQueue } from './queue/createRenderQueue.js';
 import { runDirector } from './services/director/runDirector.js';
 import { createNodePool } from './services/nodePool/createNodePool.js';
 import { subscribeTelemetry } from './services/telemetry/subscribeTelemetry.js';
-import { appendEvent } from './services/worldState/appendEvent.js';
-import { applyNodeCrashed } from './services/worldState/applyNodeCrashed.js';
-import { applyNodeSpawning } from './services/worldState/applyNodeSpawning.js';
-import { applyQueueEvent } from './services/worldState/applyQueueEvent.js';
-import { createWorldStore } from './services/worldState/createWorldStore.js';
-import { removeNode } from './services/worldState/removeNode.js';
+import { appendEvent } from './services/renderState/appendEvent.js';
+import { applyNodeCrashed } from './services/renderState/applyNodeCrashed.js';
+import { applyNodeSpawning } from './services/renderState/applyNodeSpawning.js';
+import { applyQueueEvent } from './services/renderState/applyQueueEvent.js';
+import { createRenderStore } from './services/renderState/createRenderStore.js';
+import { removeNode } from './services/renderState/removeNode.js';
 import { createBroadcaster } from './websocket/createBroadcaster.js';
 import { handleCommand } from './websocket/handleCommand.js';
 
 const CRASHED_NODE_LINGER_MS = 1500;
 
-const store = createWorldStore();
+const store = createRenderStore();
 const redisForQueue = createRedisConnection();
 const redisForEvents = createRedisConnection();
 const redisForTelemetry = createRedisConnection();

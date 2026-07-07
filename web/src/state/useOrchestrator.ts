@@ -1,6 +1,6 @@
-/** Single WebSocket to the orchestrator: exposes the latest WorldState, connection status, and a sender. */
+/** Single WebSocket to the orchestrator: exposes the latest RenderState, connection status, and a sender. */
 
-import type { Command, WorldState } from '@demo/shared';
+import type { Command, RenderState } from '@demo/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { WS_URL } from '../config/websocket.js';
@@ -10,13 +10,13 @@ export type ConnectionStatus = 'connecting' | 'open' | 'closed';
 export interface Orchestrator {
     send: (cmd: Command) => void;
     status: ConnectionStatus;
-    world: WorldState;
+    renderState: RenderState;
 }
 
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 8000;
 
-const EMPTY: WorldState = {
+const EMPTY: RenderState = {
     cycle: 0,
     events: [],
     frames: [],
@@ -26,7 +26,7 @@ const EMPTY: WorldState = {
 };
 
 export function useOrchestrator(): Orchestrator {
-    const [world, setWorld] = useState<WorldState>(EMPTY);
+    const [renderState, setRenderState] = useState<RenderState>(EMPTY);
     const [status, setStatus] = useState<ConnectionStatus>('connecting');
     const socketRef = useRef<WebSocket | null>(null);
 
@@ -44,8 +44,8 @@ export function useOrchestrator(): Orchestrator {
                 setStatus('open');
             };
             socket.onmessage = (event) => {
-                const msg = JSON.parse(event.data) as { type: string; state: WorldState };
-                if (msg.type === 'snapshot') setWorld(msg.state);
+                const msg = JSON.parse(event.data) as { type: string; state: RenderState };
+                if (msg.type === 'snapshot') setRenderState(msg.state);
             };
             socket.onclose = () => {
                 setStatus('closed');
@@ -70,5 +70,5 @@ export function useOrchestrator(): Orchestrator {
         if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(cmd));
     }, []);
 
-    return { send, status, world };
+    return { send, status, renderState };
 }
