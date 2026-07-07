@@ -1,13 +1,13 @@
-/** Kanban board: one column per stage, frame cards tagged with owning node and priority. */
+/** render display: one column per stage, frame cards tagged with owning node and priority. */
 
 import type { Frame } from '@demo/shared';
 import { STAGES } from '@demo/shared';
 
 import { useFlipAnimation } from '../../state/useFlipAnimation';
 
-import styles from './KanbanBoard.module.scss';
+import styles from './RenderDisplay.module.scss';
 
-interface KanbanBoardProps {
+interface RenderDisplayProps {
     frames: Frame[];
 }
 
@@ -17,7 +17,7 @@ function cardClassName(frame: Frame): string {
     return styles.card;
 }
 
-export function KanbanBoard({ frames }: KanbanBoardProps) {
+export function RenderDisplay({ frames }: RenderDisplayProps) {
     const registerFlipElement = useFlipAnimation<HTMLLIElement>();
     return (
         <section className={styles.board} aria-label="render pipeline">

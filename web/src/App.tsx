@@ -1,9 +1,9 @@
-/** Root layout: header with live stats and controls, Kanban board, worker-node strip, event log. */
+/** Root layout: header with live stats and controls, render display, worker-node strip, event log. */
 
 import styles from './App.module.scss';
 import { ControlBar } from './components/ControlBar/ControlBar.js';
 import { EventLog } from './components/EventLog/EventLog.js';
-import { KanbanBoard } from './components/KanbanBoard/KanbanBoard.js';
+import { RenderDisplay } from './components/RenderDisplay/RenderDisplay.js';
 import { NodeStrip } from './components/NodeStrip/NodeStrip.js';
 import { useOrchestrator } from './state/useOrchestrator.js';
 
@@ -29,7 +29,7 @@ export function App() {
                         : 'Disconnected. Reconnecting…'}
                 </p>
             )}
-            <KanbanBoard frames={renderState.frames} />
+            <RenderDisplay frames={renderState.frames} />
             <NodeStrip nodes={renderState.nodes} />
             <EventLog events={renderState.events} />
         </main>
