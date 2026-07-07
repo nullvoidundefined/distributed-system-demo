@@ -8,7 +8,7 @@ export function emptyRenderState(cycle: number): RenderState {
         events: [],
         frames: [],
         nodes: [],
-        phase: 'seeding',
+        status: 'seeding',
         totals: { done: 0, total: 0 },
     };
 }

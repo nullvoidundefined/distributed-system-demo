@@ -1,11 +1,11 @@
 /** Types for the Orchestrator: the pure cycle-engine state machine and its effects. */
 
-export type OrchestratorPhase = 'seeding' | 'running' | 'complete';
+export type OrchestratorStatus = 'seeding' | 'running' | 'complete';
 
 export interface OrchestratorState {
     cycle: number;
     paused: boolean;
-    phase: OrchestratorPhase;
+    status: OrchestratorStatus;
 }
 
 export interface OrchestratorCtx {

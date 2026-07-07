@@ -41,12 +41,12 @@ function buildCtx(observed: ObservedCounts): OrchestratorCtx {
     };
 }
 
-function displayPhase(state: OrchestratorState): RenderState['phase'] {
-    return state.paused ? 'paused' : state.phase;
+function displayStatus(state: OrchestratorState): RenderState['status'] {
+    return state.paused ? 'paused' : state.status;
 }
 
 export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore): OrchestratorRuntime {
-    let state: OrchestratorState = { cycle: 1, paused: false, phase: 'seeding' };
+    let state: OrchestratorState = { cycle: 1, paused: false, status: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
     const priorityById = new Map<string, boolean>();
@@ -93,7 +93,7 @@ export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore
             ...s,
             cycle: state.cycle,
             frames: [],
-            phase: 'seeding',
+            status: 'seeding',
             totals: { done: 0, total: 0 },
         }));
         store.update((s) => appendEvent(s, 'info', `cycle ${state.cycle} starting`));
@@ -136,11 +136,11 @@ export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore
             busyNodeIds: listBusyNodeIds(),
             nodeCount: pool.size(),
             queueDepth: (counts.waiting ?? 0) + (counts.prioritized ?? 0),
-            remaining: state.phase === 'seeding' ? 1 : remaining,
+            remaining: state.status === 'seeding' ? 1 : remaining,
         });
         const result = reduceOrchestrator(state, { type: 'tick' }, ctx);
         state = result.state;
-        store.update((s) => ({ ...s, cycle: state.cycle, phase: displayPhase(state) }));
+        store.update((s) => ({ ...s, cycle: state.cycle, status: displayStatus(state) }));
         await applyEffects(result.effects);
         schedule();
     }
@@ -157,7 +157,7 @@ export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore
         dispatch: async (action) => {
             const result = reduceOrchestrator(state, action, idleCtx());
             state = result.state;
-            store.update((s) => ({ ...s, phase: displayPhase(state) }));
+            store.update((s) => ({ ...s, status: displayStatus(state) }));
             await applyEffects(result.effects);
         },
         killNodeNow: () => {

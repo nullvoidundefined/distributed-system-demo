@@ -62,6 +62,6 @@ export interface RenderState {
     events: LogEvent[];
     frames: Frame[];
     nodes: RenderNode[];
-    phase: 'seeding' | 'running' | 'complete' | 'paused';
+    status: 'seeding' | 'running' | 'complete' | 'paused';
     totals: { done: number; total: number };
 }

@@ -8,7 +8,7 @@ import { NodeStrip } from './components/NodeStrip/NodeStrip.js';
 import { useOrchestrator } from './state/useOrchestrator.js';
 
 export function App() {
-    const { send, status, renderState } = useOrchestrator();
+    const { renderState, send, status } = useOrchestrator();
     const connected = status === 'open';
     return (
         <main className={styles.app}>
@@ -18,9 +18,9 @@ export function App() {
                 </h1>
                 <p className={styles.stats}>
                     Cycle #{renderState.cycle} · {renderState.totals.done}/{renderState.totals.total} frames ·{' '}
-                    {renderState.nodes.length} nodes · {renderState.phase}
+                    {renderState.nodes.length} nodes · {renderState.status}
                 </p>
-                <ControlBar phase={renderState.phase} disabled={!connected} onCommand={send} />
+                <ControlBar status={renderState.status} disabled={!connected} onCommand={send} />
             </header>
             {!connected && (
                 <p className={styles.banner} role="status">

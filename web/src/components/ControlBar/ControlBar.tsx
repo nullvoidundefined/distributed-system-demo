@@ -7,11 +7,11 @@ import styles from './ControlBar.module.scss';
 interface ControlBarProps {
     disabled: boolean;
     onCommand: (cmd: Command) => void;
-    phase: RenderState['phase'];
+    status: RenderState['status'];
 }
 
-export function ControlBar({ disabled, onCommand, phase }: ControlBarProps) {
-    const paused = phase === 'paused';
+export function ControlBar({ disabled, onCommand, status }: ControlBarProps) {
+    const paused = status === 'paused';
     return (
         <div className={styles.bar} role="toolbar" aria-label="Operator controls">
             <button

@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { Command } from '@demo/shared';
 import { ControlBar } from '../../components/ControlBar/ControlBar.js';
 
-function renderControlBar(phase: 'running' | 'paused', disabled = false): Command[] {
+function renderControlBar(status: 'running' | 'paused', disabled = false): Command[] {
     const sentCommands: Command[] = [];
     render(
         <ControlBar
             disabled={disabled}
             onCommand={(cmd) => sentCommands.push(cmd)}
-            phase={phase}
+            status={status}
         />,
     );
     return sentCommands;

@@ -12,20 +12,20 @@ const CRASH_PROB_PER_TICK = 0.25;
 function seed(state: OrchestratorState, ctx: OrchestratorCtx): Reduced {
     return {
         effects: [{ count: ctx.batchSize, type: 'seed' }],
-        state: { ...state, phase: 'running' },
+        state: { ...state, status: 'running' },
     };
 }
 
 function reset(state: OrchestratorState): Reduced {
     return {
         effects: [{ type: 'resetQueue' }],
-        state: { ...state, cycle: state.cycle + 1, phase: 'seeding' },
+        state: { ...state, cycle: state.cycle + 1, status: 'seeding' },
     };
 }
 
 function run(state: OrchestratorState, ctx: OrchestratorCtx): Reduced {
     if (ctx.remaining === 0) {
-        return { effects: [], state: { ...state, phase: 'complete' } };
+        return { effects: [], state: { ...state, status: 'complete' } };
     }
     const effects: OrchestratorEffect[] = [];
     if (ctx.nodeCount < ctx.minNodes) {
@@ -59,7 +59,7 @@ export function reduceOrchestrator(
     if (action.type === 'resume') return { effects: [], state: { ...state, paused: false } };
     if (action.type === 'reset') return reset(state);
     if (state.paused) return { effects: [], state };
-    if (state.phase === 'seeding') return seed(state, ctx);
-    if (state.phase === 'complete') return reset(state);
+    if (state.status === 'seeding') return seed(state, ctx);
+    if (state.status === 'complete') return reset(state);
     return run(state, ctx);
 }

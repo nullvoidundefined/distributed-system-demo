@@ -1,4 +1,4 @@
-/** Render phase: the first half of a frame's simulated work. */
+/** Render status: the first half of a frame's simulated work. */
 
 import type { FrameJobData } from '@demo/shared';
 import type { Job } from 'bullmq';

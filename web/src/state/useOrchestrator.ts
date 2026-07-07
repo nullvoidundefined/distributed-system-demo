@@ -8,9 +8,9 @@ import { WS_URL } from '../config/websocket.js';
 export type ConnectionStatus = 'connecting' | 'open' | 'closed';
 
 export interface Orchestrator {
+    renderState: RenderState;
     send: (cmd: Command) => void;
     status: ConnectionStatus;
-    renderState: RenderState;
 }
 
 const RECONNECT_BASE_MS = 500;
@@ -21,7 +21,7 @@ const EMPTY: RenderState = {
     events: [],
     frames: [],
     nodes: [],
-    phase: 'seeding',
+    status: 'seeding',
     totals: { done: 0, total: 0 },
 };
 
@@ -70,5 +70,5 @@ export function useOrchestrator(): Orchestrator {
         if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(cmd));
     }, []);
 
-    return { send, status, renderState };
+    return { renderState, send, status };
 }
