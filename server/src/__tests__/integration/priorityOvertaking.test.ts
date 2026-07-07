@@ -5,8 +5,9 @@ import { Redis } from 'ioredis';
 import { QUEUE_NAME } from '@demo/shared';
 
 import { spawnTestWorker } from './spawnTestWorker.js';
+import { TEST_REDIS_URL } from './testRedis.js';
 
-const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+const url = TEST_REDIS_URL;
 const NORMAL_FRAME_COUNT = 4;
 const TOTAL_FRAME_COUNT = NORMAL_FRAME_COUNT + 1;
 
@@ -17,7 +18,7 @@ let child: ChildProcess | undefined;
 
 beforeEach(async () => {
     conn = new Redis(url, { maxRetriesPerRequest: null });
-    await conn.flushall();
+    await conn.flushdb();
     queue = new Queue(QUEUE_NAME, { connection: conn });
     events = new QueueEvents(QUEUE_NAME, {
         connection: new Redis(url, { maxRetriesPerRequest: null }),

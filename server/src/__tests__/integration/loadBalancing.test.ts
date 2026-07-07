@@ -2,11 +2,12 @@ import { type ChildProcess } from 'node:child_process';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
-import { QUEUE_NAME, TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
+import { QUEUE_NAME, type TelemetryMsg } from '@demo/shared';
 
 import { spawnTestWorker } from './spawnTestWorker.js';
+import { TEST_REDIS_URL, TEST_TELEMETRY_CHANNEL } from './testRedis.js';
 
-const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+const url = TEST_REDIS_URL;
 const FRAME_COUNT = 6;
 
 let queue: Queue;
@@ -17,14 +18,14 @@ const children: ChildProcess[] = [];
 
 beforeEach(async () => {
     conn = new Redis(url, { maxRetriesPerRequest: null });
-    await conn.flushall();
+    await conn.flushdb();
     queue = new Queue(QUEUE_NAME, { connection: conn });
     events = new QueueEvents(QUEUE_NAME, {
         connection: new Redis(url, { maxRetriesPerRequest: null }),
     });
     await events.waitUntilReady();
     subscriber = new Redis(url);
-    await subscriber.subscribe(TELEMETRY_CHANNEL);
+    await subscriber.subscribe(TEST_TELEMETRY_CHANNEL);
 });
 
 afterEach(async () => {

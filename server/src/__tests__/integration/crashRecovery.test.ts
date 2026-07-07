@@ -3,10 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { Queue, QueueEvents } from 'bullmq';
 import { Redis } from 'ioredis';
-import { QUEUE_NAME, TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
+import { QUEUE_NAME, type TelemetryMsg } from '@demo/shared';
+
+import { TEST_REDIS_URL, TEST_TELEMETRY_CHANNEL } from './testRedis.js';
 
 const WORKER_ENTRY = fileURLToPath(new URL('../../../../worker/src/index.ts', import.meta.url));
-const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+const url = TEST_REDIS_URL;
 
 let queue: Queue;
 let events: QueueEvents;
@@ -21,6 +23,7 @@ function spawnWorker(nodeId: string): ChildProcess {
             ...process.env,
             NODE_ID: nodeId,
             REDIS_URL: url,
+            TELEMETRY_CHANNEL: TEST_TELEMETRY_CHANNEL,
             STAGE_MS: '1200',
             LOCK_DURATION_MS: '4000',
             STALLED_INTERVAL_MS: '2000',
@@ -32,14 +35,14 @@ function spawnWorker(nodeId: string): ChildProcess {
 
 beforeEach(async () => {
     conn = new Redis(url, { maxRetriesPerRequest: null });
-    await conn.flushall();
+    await conn.flushdb();
     queue = new Queue(QUEUE_NAME, { connection: conn });
     events = new QueueEvents(QUEUE_NAME, {
         connection: new Redis(url, { maxRetriesPerRequest: null }),
     });
     await events.waitUntilReady();
     subscriber = new Redis(url);
-    await subscriber.subscribe(TELEMETRY_CHANNEL);
+    await subscriber.subscribe(TEST_TELEMETRY_CHANNEL);
 });
 
 afterEach(async () => {

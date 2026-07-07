@@ -2,8 +2,10 @@ import { fork, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { afterEach, expect, test } from 'vitest';
 
+import { TEST_REDIS_URL, TEST_TELEMETRY_CHANNEL } from './testRedis.js';
+
 const WORKER_ENTRY = fileURLToPath(new URL('../../../../worker/src/index.ts', import.meta.url));
-const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+const url = TEST_REDIS_URL;
 
 let child: ChildProcess | undefined;
 
@@ -15,7 +17,12 @@ afterEach(() => {
 test('worker exits cleanly (code 0) on SIGTERM instead of hanging', async () => {
     child = fork(WORKER_ENTRY, [], {
         execArgv: ['--import', 'tsx'],
-        env: { ...process.env, NODE_ID: 'node-shutdown', REDIS_URL: url },
+        env: {
+            ...process.env,
+            NODE_ID: 'node-shutdown',
+            REDIS_URL: url,
+            TELEMETRY_CHANNEL: TEST_TELEMETRY_CHANNEL,
+        },
     });
     // give the worker time to connect and become ready
     await new Promise((resolve) => setTimeout(resolve, 1500));
