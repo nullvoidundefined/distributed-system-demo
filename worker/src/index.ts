@@ -17,6 +17,7 @@ const heartbeatMs = Number(process.env.HEARTBEAT_INTERVAL_MS ?? DEFAULT_HEARTBEA
 const nodeId = process.env.NODE_ID ?? `node-${process.pid}`;
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const stageMs = Number(process.env.STAGE_MS ?? DEFAULT_STAGE_MS);
+const telemetryChannel = process.env.TELEMETRY_CHANNEL ?? TELEMETRY_CHANNEL;
 
 const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
 const publisher = new Redis(redisUrl);
@@ -34,7 +35,7 @@ function publishIdle(): void {
         stage: null,
         state: 'idle',
     };
-    void publisher.publish(TELEMETRY_CHANNEL, JSON.stringify(msg));
+    void publisher.publish(telemetryChannel, JSON.stringify(msg));
 }
 
 const worker = new Worker<FrameJobData>(
@@ -46,6 +47,7 @@ const worker = new Worker<FrameJobData>(
             pid: process.pid,
             publisher,
             stageMs,
+            telemetryChannel,
         });
     },
     {

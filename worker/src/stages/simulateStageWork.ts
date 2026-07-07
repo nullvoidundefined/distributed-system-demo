@@ -7,6 +7,8 @@ import { RENDER_STEPS } from '../constants.js';
 import { publishTelemetry } from '../telemetry/publishTelemetry.js';
 import type { ProcessDeps } from '../types.js';
 
+const FULL_PERCENT = 100;
+
 export async function simulateStageWork(
     job: Job<FrameJobData>,
     stage: Stage,
@@ -16,7 +18,7 @@ export async function simulateStageWork(
     const stepMs = deps.stageMs / RENDER_STEPS;
     for (let step = 1; step <= RENDER_STEPS; step += 1) {
         await sleep(stepMs);
-        const pct = Math.round((step / RENDER_STEPS) * 100);
+        const pct = Math.round((step / RENDER_STEPS) * FULL_PERCENT);
         const msg: TelemetryMsg = {
             completed: deps.getCompleted(),
             frameId: job.data.frameId,
@@ -27,7 +29,7 @@ export async function simulateStageWork(
             stage,
             state,
         };
-        publishTelemetry(deps.publisher, msg);
+        publishTelemetry(deps.publisher, deps.telemetryChannel, msg);
     }
 }
 
