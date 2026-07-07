@@ -1,11 +1,11 @@
 /** Folds a worker telemetry snapshot into the RenderState: updates the node and its owning frame. */
 
-import type { TelemetryMsg, WorkerNode, RenderState } from '@demo/shared';
+import type { RenderNode, RenderState, TelemetryMsg } from '@demo/shared';
 
 import { upsertNode } from './upsertNode.js';
 
 export function applyTelemetry(state: RenderState, msg: TelemetryMsg): RenderState {
-    const node: WorkerNode = {
+    const node: RenderNode = {
         completed: msg.completed,
         frameId: msg.frameId,
         id: msg.nodeId,

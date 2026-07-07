@@ -48,7 +48,7 @@ export interface TelemetryMsg {
     state: NodeState;
 }
 
-export interface WorkerNode {
+export interface RenderNode {
     completed: number;
     frameId: string | null;
     id: string;
@@ -61,7 +61,7 @@ export interface RenderState {
     cycle: number;
     events: LogEvent[];
     frames: Frame[];
-    nodes: WorkerNode[];
+    nodes: RenderNode[];
     phase: 'seeding' | 'running' | 'complete' | 'paused';
     totals: { done: number; total: number };
 }
