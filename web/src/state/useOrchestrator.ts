@@ -1,7 +1,8 @@
 /** Single WebSocket to the orchestrator: exposes the latest RenderState, connection status, and a sender. */
 
-import type { Command, RenderState } from '@demo/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { Command, RenderState } from '@demo/shared';
 
 import { WS_URL } from '../config/websocket.js';
 
@@ -13,6 +14,7 @@ export interface Orchestrator {
     status: ConnectionStatus;
 }
 
+const RECONNECT_BACKOFF_FACTOR = 2;
 const RECONNECT_BASE_MS = 500;
 const RECONNECT_MAX_MS = 8000;
 
@@ -51,7 +53,10 @@ export function useOrchestrator(): Orchestrator {
                 setStatus('closed');
                 if (unmounted) return;
                 reconnectTimer = setTimeout(connect, reconnectDelay);
-                reconnectDelay = Math.min(reconnectDelay * 2, RECONNECT_MAX_MS);
+                reconnectDelay = Math.min(
+                    reconnectDelay * RECONNECT_BACKOFF_FACTOR,
+                    RECONNECT_MAX_MS,
+                );
             };
             socket.onerror = () => socket.close();
         }

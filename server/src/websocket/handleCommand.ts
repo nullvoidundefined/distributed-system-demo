@@ -10,10 +10,12 @@ export interface CommandDeps {
     reset: () => void;
 }
 
+const DEFAULT_INJECT_COUNT = 5;
+
 export function handleCommand(cmd: Command, deps: CommandDeps): void {
     if (cmd.type === 'pause') return deps.pause();
     if (cmd.type === 'resume') return deps.resume();
-    if (cmd.type === 'inject') return deps.inject(cmd.count ?? 5);
+    if (cmd.type === 'inject') return deps.inject(cmd.count ?? DEFAULT_INJECT_COUNT);
     if (cmd.type === 'killNode') return deps.killNode();
     if (cmd.type === 'reset') return deps.reset();
 }

@@ -10,7 +10,12 @@ import { applyNodeSpawning } from '../renderState/applyNodeSpawning.js';
 import type { RenderStore } from '../renderState/types.js';
 
 import { reduceOrchestrator } from './reduceOrchestrator.js';
-import type { OrchestratorCtx, OrchestratorEffect, OrchestratorRuntime, OrchestratorState } from './types.js';
+import type {
+    OrchestratorCtx,
+    OrchestratorEffect,
+    OrchestratorRuntime,
+    OrchestratorState,
+} from './types.js';
 
 interface ObservedCounts {
     activeCount: number;
@@ -19,6 +24,9 @@ interface ObservedCounts {
     queueDepth: number;
     remaining: number;
 }
+
+const HIGH_QUEUE_PRIORITY = 1;
+const NORMAL_QUEUE_PRIORITY = 5;
 
 function idleCtx(): OrchestratorCtx {
     return buildCtx({ activeCount: 0, busyNodeIds: [], nodeCount: 0, queueDepth: 0, remaining: 1 });
@@ -45,7 +53,11 @@ function displayStatus(state: OrchestratorState): RenderState['status'] {
     return state.paused ? 'paused' : state.status;
 }
 
-export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore): OrchestratorRuntime {
+export function runOrchestrator(
+    queue: Queue,
+    pool: NodePool,
+    store: RenderStore,
+): OrchestratorRuntime {
     let state: OrchestratorState = { cycle: 1, paused: false, status: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
@@ -60,7 +72,11 @@ export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore
             await queue.add(
                 'frame',
                 { cycle: state.cycle, frameId, priority },
-                { attempts: TUNABLES.jobAttempts, jobId: frameId, priority: priority ? 1 : 5 },
+                {
+                    attempts: TUNABLES.jobAttempts,
+                    jobId: frameId,
+                    priority: priority ? HIGH_QUEUE_PRIORITY : NORMAL_QUEUE_PRIORITY,
+                },
             );
         }
         store.update((s) =>
