@@ -2,7 +2,11 @@
 
 import type { Frame, RenderState } from '@demo/shared';
 
-import type { QueueEventInput } from './types.js';
+interface QueueEventInput {
+    frameId: string;
+    kind: 'added' | 'completed' | 'stalled' | 'failed';
+    priority?: boolean;
+}
 
 export function applyQueueEvent(state: RenderState, evt: QueueEventInput): RenderState {
     if (evt.kind === 'added') return addQueuedFrame(state, evt.frameId, evt.priority ?? false);

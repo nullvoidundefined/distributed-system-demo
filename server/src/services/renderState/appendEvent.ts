@@ -2,7 +2,7 @@
 
 import type { EventLevel, RenderState } from '@demo/shared';
 
-import { MAX_EVENTS } from './constants.js';
+const MAX_EVENTS = 200; // rolling event-log cap
 
 export function appendEvent(state: RenderState, level: EventLevel, message: string): RenderState {
     const nextId = (state.events.at(-1)?.id ?? 0) + 1;
