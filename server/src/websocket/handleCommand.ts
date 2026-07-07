@@ -1,4 +1,4 @@
-/** Routes a client Command to the director and node pool (same path the autonomous director uses). */
+/** Routes a client Command to the orchestrator and node pool (same path the autonomous orchestrator uses). */
 
 import type { Command } from '@demo/shared';
 

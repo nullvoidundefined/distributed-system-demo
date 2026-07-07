@@ -1,4 +1,4 @@
-/** Drives the Director: randomized ticks, applies effects to the queue and node pool, logs events. */
+/** Drives the Orchestrator: randomized ticks, applies effects to the queue and node pool, logs events. */
 
 import type { RenderState } from '@demo/shared';
 import type { Queue } from 'bullmq';
@@ -9,8 +9,8 @@ import { appendEvent } from '../renderState/appendEvent.js';
 import { applyNodeSpawning } from '../renderState/applyNodeSpawning.js';
 import type { RenderStore } from '../renderState/types.js';
 
-import { reduceDirector } from './reduceDirector.js';
-import type { DirectorCtx, DirectorEffect, DirectorRuntime, DirectorState } from './types.js';
+import { reduceOrchestrator } from './reduceOrchestrator.js';
+import type { OrchestratorCtx, OrchestratorEffect, OrchestratorRuntime, OrchestratorState } from './types.js';
 
 interface ObservedCounts {
     activeCount: number;
@@ -20,11 +20,11 @@ interface ObservedCounts {
     remaining: number;
 }
 
-function idleCtx(): DirectorCtx {
+function idleCtx(): OrchestratorCtx {
     return buildCtx({ activeCount: 0, busyNodeIds: [], nodeCount: 0, queueDepth: 0, remaining: 1 });
 }
 
-function buildCtx(observed: ObservedCounts): DirectorCtx {
+function buildCtx(observed: ObservedCounts): OrchestratorCtx {
     return {
         activeCount: observed.activeCount,
         batchSize: TUNABLES.batchSize,
@@ -41,12 +41,12 @@ function buildCtx(observed: ObservedCounts): DirectorCtx {
     };
 }
 
-function displayPhase(state: DirectorState): RenderState['phase'] {
+function displayPhase(state: OrchestratorState): RenderState['phase'] {
     return state.paused ? 'paused' : state.phase;
 }
 
-export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): DirectorRuntime {
-    let state: DirectorState = { cycle: 1, paused: false, phase: 'seeding' };
+export function runOrchestrator(queue: Queue, pool: NodePool, store: RenderStore): OrchestratorRuntime {
+    let state: OrchestratorState = { cycle: 1, paused: false, phase: 'seeding' };
     let timer: ReturnType<typeof setTimeout>;
     let frameSeq = 0;
     const priorityById = new Map<string, boolean>();
@@ -99,7 +99,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): D
         store.update((s) => appendEvent(s, 'info', `cycle ${state.cycle} starting`));
     }
 
-    async function applyEffect(effect: DirectorEffect): Promise<void> {
+    async function applyEffect(effect: OrchestratorEffect): Promise<void> {
         if (effect.type === 'seed') await seed(effect.count);
         if (effect.type === 'spawn') spawnNode();
         if (effect.type === 'kill') retireIdleNode();
@@ -107,7 +107,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): D
         if (effect.type === 'resetQueue') await resetCycle();
     }
 
-    async function applyEffects(effects: DirectorEffect[]): Promise<void> {
+    async function applyEffects(effects: OrchestratorEffect[]): Promise<void> {
         for (const effect of effects) await applyEffect(effect);
     }
 
@@ -138,7 +138,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): D
             queueDepth: (counts.waiting ?? 0) + (counts.prioritized ?? 0),
             remaining: state.phase === 'seeding' ? 1 : remaining,
         });
-        const result = reduceDirector(state, { type: 'tick' }, ctx);
+        const result = reduceOrchestrator(state, { type: 'tick' }, ctx);
         state = result.state;
         store.update((s) => ({ ...s, cycle: state.cycle, phase: displayPhase(state) }));
         await applyEffects(result.effects);
@@ -155,7 +155,7 @@ export function runDirector(queue: Queue, pool: NodePool, store: RenderStore): D
 
     return {
         dispatch: async (action) => {
-            const result = reduceDirector(state, action, idleCtx());
+            const result = reduceOrchestrator(state, action, idleCtx());
             state = result.state;
             store.update((s) => ({ ...s, phase: displayPhase(state) }));
             await applyEffects(result.effects);
