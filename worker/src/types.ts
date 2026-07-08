@@ -8,4 +8,5 @@ export interface ProcessDeps {
     pid: number;
     publisher: Redis;
     stageMs: number;
+    telemetryChannel: string;
 }

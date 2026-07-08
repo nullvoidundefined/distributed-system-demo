@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest';
 import type { Job } from 'bullmq';
 import type { Redis } from 'ioredis';
-import { TELEMETRY_CHANNEL, type FrameJobData, type TelemetryMsg } from '@demo/shared';
+import { type FrameJobData, type TelemetryMsg } from '@demo/shared';
 
 import { processFrame } from '../processFrame.js';
 
@@ -9,6 +9,8 @@ interface PublishedTelemetry {
     channel: string;
     msg: TelemetryMsg;
 }
+
+const CHANNEL = 'worker:telemetry:unit';
 
 function createCapturingPublisher(published: PublishedTelemetry[]): Redis {
     return {
@@ -29,11 +31,18 @@ test('runs RENDERING before COMPOSITING with a full progress ramp on each stage'
         pid: 42,
         publisher: createCapturingPublisher(published),
         stageMs: 20,
+        telemetryChannel: CHANNEL,
     });
 
     expect(published).toHaveLength(10);
     const stages = published.map(({ msg }) => msg.stage);
-    expect(stages.slice(0, 5)).toEqual(['RENDERING', 'RENDERING', 'RENDERING', 'RENDERING', 'RENDERING']);
+    expect(stages.slice(0, 5)).toEqual([
+        'RENDERING',
+        'RENDERING',
+        'RENDERING',
+        'RENDERING',
+        'RENDERING',
+    ]);
     expect(stages.slice(5)).toEqual([
         'COMPOSITING',
         'COMPOSITING',
@@ -45,7 +54,7 @@ test('runs RENDERING before COMPOSITING with a full progress ramp on each stage'
     expect(renderingPcts).toEqual([20, 40, 60, 80, 100]);
     const compositingPcts = published.slice(5).map(({ msg }) => msg.pct);
     expect(compositingPcts).toEqual([20, 40, 60, 80, 100]);
-    expect(published.every(({ channel }) => channel === TELEMETRY_CHANNEL)).toBe(true);
+    expect(published.every(({ channel }) => channel === CHANNEL)).toBe(true);
     expect(published[0].msg).toMatchObject({
         completed: 7,
         frameId: 'f9',

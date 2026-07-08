@@ -1,11 +1,12 @@
 import { type ChildProcess } from 'node:child_process';
 import { afterEach, beforeEach, expect, test } from 'vitest';
 import { Redis } from 'ioredis';
-import { TELEMETRY_CHANNEL, type TelemetryMsg } from '@demo/shared';
+import { type TelemetryMsg } from '@demo/shared';
 
 import { spawnTestWorker } from './spawnTestWorker.js';
+import { TEST_REDIS_URL, TEST_TELEMETRY_CHANNEL } from './testRedis.js';
 
-const url = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
+const url = TEST_REDIS_URL;
 const HEARTBEAT_MS = 300;
 const LISTEN_MS = 1500;
 
@@ -14,7 +15,7 @@ let child: ChildProcess | undefined;
 
 beforeEach(async () => {
     subscriber = new Redis(url);
-    await subscriber.subscribe(TELEMETRY_CHANNEL);
+    await subscriber.subscribe(TEST_TELEMETRY_CHANNEL);
 });
 
 afterEach(async () => {
